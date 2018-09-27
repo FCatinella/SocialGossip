@@ -1,7 +1,7 @@
 import java.util.*;
 
 public class User {
-	String Username = "";
+	private String Username = "";
 	String lingua = "";
 	String password = "";
 	private Integer online = 0;

@@ -8,12 +8,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-public class ServerThread implements Runnable{
+//Task che il server deve eseguire
+public class ServerTask implements Runnable{
 	Socket sock;
 	ConcurrentHashMap <String,User> tabellaUtenti;
 	RMIServerImp RmiServer;
-	
-	public ServerThread(Socket sock,ConcurrentHashMap<String,User> tabellaUtentiArg, RMIServerImp RmiServer) {
+
+	//prende socket,tabella hash e oggetto rmi dal main
+	public ServerTask(Socket sock, ConcurrentHashMap<String,User> tabellaUtentiArg, RMIServerImp RmiServer) {
 		this.sock=sock;
 		this.tabellaUtenti=tabellaUtentiArg;
 		this.RmiServer=RmiServer;
@@ -36,12 +38,12 @@ public class ServerThread implements Runnable{
 		String prova =null;
 		System.out.println("Sono connesso alla porta "+sock.getPort());
 		Boolean quit = false;
+		//legge le richieste dei client
 		while(!quit) {
 			try {
 				prova = reader.readLine();
 				System.out.println("Richiesta letta");
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
 			//converto la stringa in un oggetto JSON
@@ -52,16 +54,19 @@ public class ServerThread implements Runnable{
 			} catch (ParseException e) {
 				e.printStackTrace();
 			}
+			//estraggo le informazioni dal messaggio ricevuto
 			String op = (String) rec.get("OP");
 			String username= (String) rec.get("USERNAME");
 			String password= (String) rec.get("PASSWORD");
 			String language= (String) rec.get("LANGUAGE");
 			Boolean result = true;
-			System.out.println(rec);
+			System.out.println("Ricevuto: "+rec);
+			//in base all'operazione richiesta, fa cose diverse
 			switch(op) {
 				case "REGISTER":
 					//utente nuovo (non presente nella hash)
 					if(!tabellaUtenti.containsKey(username)) {
+						//aggiungo l'utente alla tabella ( con tanto di lingua )
 						User nuovo = new User(username,password,language);
 						tabellaUtenti.put(username, nuovo);
 						risp.put("ERRORMESS", username+" registrato!");
@@ -74,12 +79,25 @@ public class ServerThread implements Runnable{
 					break;
 					
 				case "CONNECT":
+					//connessione di utente già registrato
 					if(tabellaUtenti.containsKey(username)) {
 						User aux = tabellaUtenti.get(username);
+						//controllo la password
 						if(aux.checkPass(password)) {
-							aux.connect();
+							//non ci posso essere più client per un utente
+							if(aux.isOnline()==0){
+								aux.connect();
+							}
+							else {
+								risp.put("ERRORMESS", "Utente già connesso");
+								result= false;
+								break;
+							}
+
+							//RMI
 							try {
-								RmiServer.update(aux,1);
+								//invio la notifica di connessione agli amici
+								RmiServer.goOnline(aux);
 							} catch (RemoteException e) {
 								System.out.println("Invio notifica fallito (Connect)");
 							}
@@ -96,12 +114,15 @@ public class ServerThread implements Runnable{
 						result= false;
 					}
 					break;
-					
+
+
 				case "DISCONNECT":
+					//disconnessione di un utente
 					try {
 						if(username!=null && tabellaUtenti.containsKey(username)) {
 							User aux = tabellaUtenti.get(username);
-							RmiServer.update(aux,0);
+							RmiServer.goOffline(aux);
+							aux.disconnect();
 							}
 					} catch (RemoteException e) {
 						System.out.println("Invio notifica fallito (Disconnect)");
@@ -134,7 +155,7 @@ public class ServerThread implements Runnable{
 							friend.addFriend(friendSender);
 							friendSender.addFriend(friend);
 							try {
-								RmiServer.update(friendSender,3);
+								RmiServer.addFriendNoti(friendSender,friend);
 							}
 							catch (Exception e) {}
 						}
@@ -150,22 +171,23 @@ public class ServerThread implements Runnable{
 			if(quit) break;
 			risp.put("OP",op);
 			risp.put("RESULT", result);
-			
+
+			//invio l'esito
 			try {
 				risp.writeJSONString(writer);
 				writer.newLine(); 
 				writer.flush();
 			} 
 			catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
+
+		//termino il task
 		try {
 			writer.close();
-			System.out.println("Thread Terminato");
+			System.out.println("Task Terminato");
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}

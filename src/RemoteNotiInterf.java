@@ -2,10 +2,14 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 
 public interface RemoteNotiInterf extends Remote {
-	//funzione da chiamare quando un utente si connette
-	public void changedStatNotiON(String utente) throws RemoteException;
-	public void changedStatNotiOFF(String utente) throws RemoteException;
-	public void newFriendNoti(String utente) throws RemoteException;
-	public String getName()throws RemoteException;
+
+	//visualizza la notifica dell'utente connesso
+	void changedStatNotiON(String utente) throws RemoteException;
+    //visualizza la notifica dell'utente disconnesso
+    void changedStatNotiOFF(String utente) throws RemoteException;
+    //notifica l'aggiunta di un nuovo amico
+    void newFriendNoti(String utente) throws RemoteException;
+    //recupero il nome di chi ha creato l'oggetto
+    String getName()throws RemoteException;
 	
 }

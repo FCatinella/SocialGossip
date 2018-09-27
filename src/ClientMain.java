@@ -233,31 +233,27 @@ public class ClientMain implements Runnable,ActionListener{
 	private boolean afterSend(String receiver) {
 		Boolean result = true;
 		try {
+		    //legge il messaggio
 			String rec =reader.readLine();
 			JSONParser parser = new JSONParser();
 			JSONObject recJSON = (JSONObject) parser.parse(rec);
+			//recupera l'esito della richiesta
 			result = (Boolean) recJSON.get("RESULT");
 			String errorMess = (String) recJSON.get("ERRORMESS");
 			if(!result) {
-				JFrame infoWind = new JFrame();
-				infoWind.setSize(320,150);
-				infoWind.setLocation(250, 250);
-				infoWind.setLayout(null);
-				JLabel errorMessage = new JLabel (errorMess);
-				errorMessage.setBounds(20, 40, 280, 30);
-				infoWind.add(errorMessage);
-				infoWind.setResizable(false);
-				infoWind.setVisible(true);
+			    //visualizza una finestra di errore
+				visualizeError(errorMess);
 			}
 			else {
+			    // se è andato tutto liscio
 				String resultOp = (String) recJSON.get("OP");
-				switch (resultOp) {
-					case "ADDFRIEND":
-						friendModel.addElement(receiver);
-						
-				}
+				//esegue comandi in base all'operazione richiesta in origine
+                switch (resultOp) {
+                    case "ADDFRIEND":
+                        //aggiungo l'amico alla lista degli amici
+                        friendModel.addElement(receiver);
+                }
 			}
-
 		}
 		catch (Exception e ) {
 			e.getStackTrace();
@@ -265,22 +261,22 @@ public class ClientMain implements Runnable,ActionListener{
 		return result;
 		
 	}
-	
-	public void sendToServer(JSONObject mess) {
+
+	//invia messaggio al server
+	private void sendToServer(JSONObject mess) {
 		try {
 			writer.write(mess.toJSONString());
 			writer.newLine();
 			writer.flush();
-			//aspetto la risposta
-			
+
 		} catch (IOException e) {
 			//socket chiuso
 			System.out.println("Richiesta la chiusura ma server non raggiungibile");
 		}
 	}
 	
-	
-	public void disconnectFromServer() {
+	//funzione per disconnettersi
+	private void disconnectFromServer() {
 		JSONObject mess = new JSONObject();
 		mess.put("OP","DISCONNECT");
 		mess.put("USERNAME",username);
@@ -295,6 +291,20 @@ public class ClientMain implements Runnable,ActionListener{
 		}
 		
 	}
+
+	//visualizza "errorMess" in una finestra
+	private void visualizeError(String errorMess){
+        JFrame infoWind = new JFrame();
+        infoWind.setSize(320,150);
+        infoWind.setLocation(250, 250);
+        infoWind.setLayout(null);
+        JLabel errorMessage = new JLabel (errorMess);
+        errorMessage.setBounds(20, 40, 280, 30);
+        infoWind.add(errorMessage);
+        infoWind.setResizable(false);
+        infoWind.setVisible(true);
+    }
+
 	
 
 }
