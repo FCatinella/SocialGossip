@@ -177,6 +177,7 @@ public class Client extends JFrame implements ActionListener{
 			writer.write(mess.toJSONString());
 			writer.newLine();
 			writer.flush();
+			System.out.println("Sono qui");
 		    //aspetto la risposta
 			rec = reader.readLine();
 		} catch (IOException e) {

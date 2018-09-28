@@ -15,6 +15,7 @@ public class ServerMain  {
 		//creo l'oggeto remoto in cui saranno registrate le callback dei client
 		RMIServerImp RmiServer= new RMIServerImp(tabellaUtenti);
 
+
 		//RMI-----
 		try {
 			//esporto l'oggetto
@@ -32,18 +33,19 @@ public class ServerMain  {
 		//------
 
 		//questo è il threadpool che esaudirà le richieste dei vari client
-		ThreadPoolServer threadpool = new ThreadPoolServer();
+        ServerListenerTask listener = new ServerListenerTask(tabellaUtenti,RmiServer);
 		System.out.println(InetAddress.getLocalHost().getHostAddress());
 		//creo il socket di welcome sulla porta 1994
 		ServerSocket serverSocket = new ServerSocket (1994);
 		Boolean stop = false;
-		while(!stop) {
+		Thread th = new Thread(listener);
+		th.start();
+        while(!stop) {
 			//accetto le connessioni sulla porta di welcome (bloccante)
-			Socket sock = serverSocket.accept();
+            Socket sock = serverSocket.accept();
 			//creo il task da eseguire
-			ServerTask thread = new ServerTask(sock,tabellaUtenti,RmiServer);
-			//lo passo al threadpool
-			threadpool.executeTask(thread);
+            listener.addSocket(sock);
+            //lo passo al threadpool
 		}
 		//chiudo il socket e termino il server
 		serverSocket.close();

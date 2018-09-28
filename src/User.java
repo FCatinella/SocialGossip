@@ -1,11 +1,13 @@
+import java.net.Socket;
 import java.util.*;
 
 public class User {
 	private String Username = "";
-	String lingua = "";
-	String password = "";
+	private String lingua = "";
+	private String password = "";
+	private MySocket userSock;
 	private Integer online = 0;
-	ArrayList<User> amici= new ArrayList<User>();
+	private ArrayList<User> amici= new ArrayList<User>();
 	
 	
 	
@@ -14,7 +16,16 @@ public class User {
 		this.password=pass;
 		this.lingua=lang;
 	}
-	
+
+	public MySocket getUserSock(){
+	    return userSock;
+    }
+
+	public MySocket updateSock(Socket sock){
+	    userSock=new MySocket(sock);
+	    return userSock;
+    }
+
 	public Integer isOnline() {
 		return this.online;
 	}
