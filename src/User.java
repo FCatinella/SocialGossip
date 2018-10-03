@@ -10,17 +10,19 @@ public class User {
 	private ArrayList<User> amici= new ArrayList<User>();
 	
 	
-	
+	//costruttore
 	public User(String nome, String pass,String lang) {
 		this.Username=nome;
 		this.password=pass;
 		this.lingua=lang;
 	}
 
+	//recupero il socket
 	public MySocket getUserSock(){
 	    return userSock;
     }
 
+    //aggiorno il socket
 	public MySocket updateSock(Socket sock){
 	    userSock=new MySocket(sock);
 	    return userSock;
@@ -76,5 +78,14 @@ public class User {
 		if(this.Username.equals(a.getUsername())) return true;
 		return amici.contains(a);
 	}
-	
+
+	public ArrayList<String> getFriendList(){
+	    ArrayList<String> friendNameList = new ArrayList<String>();
+	    Iterator <User> i = amici.iterator();
+	    while(i.hasNext()){
+	        User aux = i.next();
+	        friendNameList.add(aux.getUsername());
+        }
+        return friendNameList;
+    }
 }

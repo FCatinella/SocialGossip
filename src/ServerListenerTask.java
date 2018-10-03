@@ -61,7 +61,7 @@ public class ServerListenerTask implements Runnable {
                 }
                 //se ho letto qualcosa aggiungo il task al threadpool
                 if(mess!=null){
-                    ServerTask task = new ServerTask(rec,mSock.writer,tabella,RMI);
+                    ServerTask task = new ServerTask(rec,mSock,tabella,RMI);
                     threadpool.executeTask(task);
                 }
 

@@ -14,13 +14,15 @@ public class ServerTask implements Runnable{
 	ConcurrentHashMap <String,User> tabellaUtenti;
 	RMIServerImp RmiServer;
 	BufferedWriter writer;
+	MySocket mSock;
 
 	//prende socket,tabella hash e oggetto rmi dal main
-	public ServerTask(JSONObject jsonMess,BufferedWriter writer, ConcurrentHashMap<String,User> tabellaUtentiArg, RMIServerImp RmiServer) {
+	public ServerTask(JSONObject jsonMess,MySocket msock, ConcurrentHashMap<String,User> tabellaUtentiArg, RMIServerImp RmiServer) {
 		this.rec=jsonMess;
 		this.tabellaUtenti=tabellaUtentiArg;
 		this.RmiServer=RmiServer;
-		this.writer=writer;
+		this.mSock=msock;
+		this.writer=msock.writer;
 	}
 	@Override
 	public void run() {
@@ -28,7 +30,6 @@ public class ServerTask implements Runnable{
 		//legge le richieste dei client
 
 		//converto la stringa in un oggetto JSON
-
 		JSONObject risp=new JSONObject();
 
 		//estraggo le informazioni dal messaggio ricevuto
@@ -38,11 +39,9 @@ public class ServerTask implements Runnable{
 		String language= (String) rec.get("LANGUAGE");
 		Boolean result = true;
 		Boolean quit = false;
-		System.out.println("Ricevuto2: "+rec);
 		//in base all'operazione richiesta, fa cose diverse
 		switch(op) {
 			case "REGISTER":
-			    System.out.println("Ciao ciao ciao");
 				//utente nuovo (non presente nella hash)
 				if(!tabellaUtenti.containsKey(username)) {
 					//aggiungo l'utente alla tabella ( con tanto di lingua )
@@ -66,7 +65,9 @@ public class ServerTask implements Runnable{
 						//non ci posso essere più client per un utente
 						if(aux.isOnline()==0){
 							aux.connect();
-						}
+							aux.updateSock(mSock.socket);
+
+                        }
 						else {
 							risp.put("ERRORMESS", "Utente già connesso");
 							result= false;
@@ -94,6 +95,11 @@ public class ServerTask implements Runnable{
 				}
 				break;
 
+            case "LISTFRIENDS":{
+                User aux = tabellaUtenti.get(username);
+                risp.put("CONTENT",aux.getFriendList());
+                }
+                break;
 
 			case "DISCONNECT":
 				//disconnessione di un utente
@@ -127,6 +133,7 @@ public class ServerTask implements Runnable{
 				if ( tabellaUtenti.containsKey(friendToAdd) ) {
 					User friendSender = tabellaUtenti.get(username);
 					User friend = tabellaUtenti.get(friendToAdd);
+					risp.put("FRIEND",friendToAdd);
 					if (username.equals(friendToAdd)) {
 						result=false;
 						risp.put("ERRORMESS", "Non puoi diventare amico di te stesso.");
@@ -158,6 +165,7 @@ public class ServerTask implements Runnable{
 			risp.put("OP",op);
 			risp.put("RESULT", result);
 
+			System.out.println("Invio esito al client"+risp.toString());
 			//invio l'esito
 			try {
 				risp.writeJSONString(writer);

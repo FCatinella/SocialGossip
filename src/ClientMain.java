@@ -1,310 +1,282 @@
-import java.awt.Font;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.net.Socket;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
-import java.util.*;
-
-import javax.swing.*;
-
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.net.*;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
-public class ClientMain implements Runnable,ActionListener{
+import javax.swing.*;
 
-	//elementi interfaccia
-	private JFrame finestra = null; //finestra del client
-    private JTextArea notiList = null; // lista degli amici (UI)
-    private JFrame addWind = null; //finestra aggiunta amico o gruppo
-    private DefaultListModel friendModel = null;
-    private JTextArea addArea = null;
-
-
-    //variabili globali
-    private String username;
-    private Socket sock;
-	private BufferedWriter writer;
-	private BufferedReader reader;
-
-
-	//variabili per RMI
-	private ServerInterface server =null;
-	private RemoteNotiInterf stub = null;
+public class ClientMain extends JFrame implements ActionListener{
 	
+	private Socket socket;
+	
+	
+	//variabili
+	private InetAddress local=null;
+	private BufferedWriter writer = null;
+	private BufferedReader reader = null;
+	private String rec = null;
+	private JSONObject recJSON=null;
+	private JFrame finestra = null;
+	private String lang= "it";
+	
+	//componenti dell'interfaccia
+	private JLabel usernameLabel;
+	private JTextField usernameArea;
+	private JPasswordField passArea;
+	//lingue disponibili
+	private String[] langStrings = { "Italiano", "Francaise", "English", "Espanol", "Deutsch"};
+	private JComboBox langList = new JComboBox(langStrings);
+	
+	private ClientMain()  {
+		//Interfaccia grafica
+		
+		//creo la finestra
+		int windwX=350;
+		int windwY=500;
+		finestra = new JFrame ("Benvenuto su Social Gossip");
+		finestra.setSize(windwX,windwY);
+		finestra.setLocation(100, 100);
+		finestra.setLayout(null);
+		
+		//titolo
+		JLabel titolo = new JLabel("Social Gossip",JLabel.CENTER);
+		titolo.setFont(new Font ("Arial",Font.PLAIN,20));
+		titolo.setBounds((windwX-200)/2,0,200,50);
+		
+		//label Username
+		usernameLabel = new JLabel("Username",JLabel.CENTER);
+		usernameLabel.setFont(new Font ("Arial",Font.PLAIN,13));
+		usernameLabel.setBounds((windwX-200)/2,50,200,50);
+		//TextField (Username)
+		usernameArea = new JTextField("",30);
+		usernameArea.setEditable(true);
+		usernameArea.setBounds((windwX-200)/2,90,200,20);
+		
+		//label Password + PasswordField (sottoclasse di JFieldText)
+		JLabel passLabel = new JLabel("Password",JLabel.CENTER);
+		passLabel.setFont(new Font ("Arial",Font.PLAIN,13));
+		passLabel.setBounds((windwX-200)/2,120,200,50);
+		passArea = new JPasswordField("",30);
+		passArea.setEditable(true);
+		passArea.setBounds((windwX-200)/2,160,200,20);
+		
+		//Pulsanti
+		JButton loginButt = new JButton("Login");
+		loginButt.setBounds(75, 200, 80, 30);
+		loginButt.addActionListener(this);
+		JButton regisButt = new JButton("Registrati");
+		regisButt.setBounds(windwX-185, 200, 110, 30);
+		regisButt.addActionListener(this);
 
-	//costruttore
-	public  ClientMain(Socket sock,String username) {
-		this.username=username;
-		this.sock=sock;
+		//Label lingua+Lista lingue
+		JLabel langLabel = new JLabel ("Lingua");
+		langLabel.setBounds(100, 398, 90, 30);		
+		langList.setBounds(180, 400, 90, 30);
+		langList.addActionListener(this);
+		
+		
+		
+		//aggiungo il tutto alla finestra
+		finestra.add(titolo);
+		finestra.add(usernameLabel);
+		finestra.add(usernameArea);
+		finestra.add(passLabel);
+		finestra.add(passArea);
+		finestra.add(loginButt);
+		finestra.add(regisButt);
+		finestra.add(langList);
+		finestra.add(langLabel);
+		finestra.setResizable(false); //non si può ridimensionare
+		finestra.setVisible(true);
+	}
+	
+	
+	public static void main (String args[]){
+		ClientMain client = new ClientMain();
+		//controllo che il server sia raggiungibile
+		if(!client.connectToServer()) {
+			System.out.println("Server non raggiungibile");
+			//termino se non lo è
+			System.exit(ABORT);
+		}
+		//aggiungo il listener del pulsante chiudi della finestra
+		client.finestra.addWindowListener(new WindowAdapter( ){
+			public void windowClosing(WindowEvent event) {
+				System.out.println("Chiusa");
+				//chiudo il socket
+				try {
+					//si disconnette dal server (invia una DISCONNECT)
+					client.disconnectFromServer();
+					client.writer.close();
+					System.exit(NORMAL);
+				} 
+				catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+
+	}
+	
+	
+	@Override
+	//Listener dei pulsanti
+	public void actionPerformed(ActionEvent evt)  {
+		//controllo quale tasto ha chiamato l'evento
+		String pressed = evt.getActionCommand();
+		//box della lingua
+		if (pressed.equals("comboBoxChanged")) {
+			//in base alla lingua scelta setto il parametro lingua da inviare durante la CONNECT
+			String selectedLang = langList.getSelectedItem().toString();
+			switch (selectedLang) {
+				case ("Italiano"):
+					lang="it";
+					break;
+				case ("English"):
+					lang="en";
+					break;
+				case ("Francaise"):
+					lang="fr";
+					break;
+				case ("Espanol"):
+					lang="es";
+					break;
+				case ("Deutsch"):
+					lang="de";
+					break;
+					
+			}
+			return;
+		}
+		//preparo la richiesta da inviare al server
+		JSONObject mess = new JSONObject();
+		// inserisco l'operazione da richiedere in base a cosa è stato premuto
+		switch(pressed) {
+			case "Registrati":
+				mess.put("OP","REGISTER");
+				break;
+			case "Login":
+				mess.put("OP","CONNECT");
+				break;
+		}
+		
+		//in ogni caso devo inserire questi dati
+		String userDigit=usernameArea.getText();
+		String passDigit=String.valueOf(passArea.getPassword());
+		mess.put("USERNAME",userDigit);
+		mess.put("PASSWORD",passDigit);
+		mess.put("LANGUAGE",lang);
+		//invio il messaggio
 		try {
-			writer = new BufferedWriter(new OutputStreamWriter(this.sock.getOutputStream()));
-			reader= new BufferedReader(new InputStreamReader (this.sock.getInputStream()));
+			writer.write(mess.toJSONString());
+			writer.newLine();
+			writer.flush();
+		    //aspetto la risposta
+			rec = reader.readLine();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		JSONParser parser = new JSONParser();
+		try {
+			//parso la stringa che ho ricevuto 
+			recJSON = (JSONObject) parser.parse(rec);
+		} catch (ParseException e1) {
+			// Non è arrivata una stringa in formato JSON
+			e1.printStackTrace();
+		}
+		
+		//controllo il risultato della richiesta fatta, recupero risultato dell'operazione e
+		// messaggio di errore da visualizzare
+		Boolean result = (Boolean) recJSON.get("RESULT");
+		String errorMess = (String) recJSON.get("ERRORMESS");
+		// e nel caso visualizzo una finestra di errore
+		if(!result) {
+			JFrame infoWind = new JFrame();
+			infoWind.setSize(220,150);
+			infoWind.setLocation(150, 150);
+			infoWind.setLayout(null);
+			JLabel errorMessage = new JLabel (errorMess);
+			errorMessage.setBounds(20, 40, 180, 30);
+			infoWind.add(errorMessage);
+			infoWind.setResizable(false);
+			infoWind.setVisible(true);
+		}
+		else {
+			//tutto bene -> result == true
+			String resultOp = (String) recJSON.get("OP");
+			switch (resultOp) {
+				case "REGISTER":
+					//visualizzo messaggio di avvenuta registrazione
+					JFrame infoWind = new JFrame();
+					infoWind.setSize(220,150);
+					infoWind.setLocation(150, 150);
+					infoWind.setLayout(null);
+					JLabel errorMessage = new JLabel (errorMess);
+					errorMessage.setBounds(20, 40, 180, 30);
+					infoWind.add(errorMessage);
+					infoWind.setResizable(false);
+					infoWind.setVisible(true);
+					break;
+				case "CONNECT":
+					//partenza di tutto il client (gli passo il nome che l'utente ha digitato)
+					Client cm = new Client(socket,userDigit);
+					//chiudo la finestra di login
+					finestra.setVisible(false);
+					cm.run();
+			}
+		}
+		
+		
+	}
+
+
+	//Funzione per connettersi al server
+	private Boolean connectToServer() {
+		try {
+			//Ottengo l'indirizzo IP (localhost al momento)
+			local = InetAddress.getByName("127.0.0.1");
+		} 
+		catch (UnknownHostException e) {
+			//Indirizzo sconosciuto
+			e.printStackTrace();
+			return false;
+		}
+		
+		//Mi connetto sulla porta di benvenuto e ottengo un socket su cui continuare la connessione
+		try {
+			socket = new Socket(local,1994);
+			//recupero i due buffer: writer e reader dove il socket legge e scrive
+			writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+			reader= new BufferedReader(new InputStreamReader (socket.getInputStream()));
+		} 
+		catch (IOException e) {
+			//qualcosa va storto
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
+		
+
+	//funzione per disconnettersi dal server
+	private void disconnectFromServer() {
+		//creo un messaggio di disconnect e lo invio
+		JSONObject mess = new JSONObject();
+		mess.put("OP","DISCONNECT");
+		try {
+			writer.write(mess.toJSONString());
+			writer.newLine();
+			writer.flush();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
 	}
-
-
-	private void createWind() {
-		//creo la finestra della chat
-		int windwX=550;
-		int windwY=500;
-		finestra = new JFrame (username+" - Social Gossip");
-		finestra.setSize(windwX,windwY);
-		finestra.setLocation(400, 100);
-		finestra.setLayout(null);
-		
-		//nome utente
-		JLabel userTitolo = new JLabel(username);
-		userTitolo.setFont(new Font ("Arial",Font.BOLD,17));
-		userTitolo.setBounds(50,400,200,50);
-		finestra.add(userTitolo);
-		
-		//lista amici
-		JLabel friendTitolo = new JLabel("Amici");
-		friendTitolo.setFont(new Font ("Arial",Font.PLAIN,14));
-		friendTitolo.setBounds(50,10,200,50);
-		finestra.add(friendTitolo);
-		friendModel= new DefaultListModel();
-		JList friendList = new JList(friendModel);
-		//posso selezionare solo un nome della lista
-		friendList.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
-		friendList.setLayoutOrientation(JList.VERTICAL_WRAP);
-		JScrollPane scrollPaneStatus = new JScrollPane(friendList);
-		scrollPaneStatus.setBounds(50,50,200,330);
-		finestra.add(scrollPaneStatus);
-	
-		//finestra Gruppi
-		JLabel groupsTitolo = new JLabel("Gruppi");
-		groupsTitolo.setFont(new Font("Arial",Font.PLAIN,14));
-		groupsTitolo.setBounds(300,10,200,50);
-		finestra.add(groupsTitolo);
-		DefaultListModel groupModel = new DefaultListModel();
-		JList groupList = new JList(groupModel);
-		groupList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		groupList.setLayoutOrientation(JList.VERTICAL_WRAP);
-		JScrollPane groupScrollPane= new JScrollPane(groupList);
-		groupScrollPane.setBounds(300,50,200,150);
-		finestra.add(groupScrollPane);
-		
-		//finestra notifiche
-		JLabel notiTitolo = new JLabel ("Notifiche");
-		notiTitolo.setFont(new Font ("Arial",Font.PLAIN,14));
-		notiTitolo.setBounds(300,144,200,150);
-		finestra.add(notiTitolo);
-		notiList = new JTextArea();
-		JScrollPane notiScrollPane= new JScrollPane(notiList);
-		notiScrollPane.setBounds(300,230,200,150);
-		notiList.setEditable(false);
-		finestra.add(notiScrollPane);
-
-		//pulsante disconnetti
-		JButton discButton = new JButton("Esci");
-		discButton.setBounds(windwX-120, 410, 70, 30);
-		discButton.addActionListener(this);
-		finestra.add(discButton);
-		
-		//pulsante aggiungi
-		JButton addButton = new JButton("Aggiungi");
-		addButton.setBounds(300, 410, 100, 30);
-		addButton.addActionListener(this);
-		finestra.add(addButton);		
-		finestra.setResizable(false);
-		finestra.setVisible(true);
-		
-	}
 	
 	
-	
-	
-
-	@Override
-	public void run() {
-		//creo la finestra
-		createWind();
-		//listener per il "chiudi della finestra"
-		finestra.addWindowListener(new WindowAdapter( ){
-			public void windowClosing(WindowEvent event) {
-				System.out.println("Chiusa");
-				disconnectFromServer();
-				//chiudo il socket
-				System.exit(0);
-			}
-		});
-
-		//RMI
-		try {
-			System.out.println("Parte RMI Client");
-			//recupero il registry
-			Registry registry = LocateRegistry.getRegistry(5000);
-			//cerco l'oggetto remoto
-			server=(ServerInterface) registry.lookup("Server");
-			//si registra per la callback
-			RemoteNotiInterf callbackObj = new RemoteNoti(notiList,friendModel,username);
-			stub = (RemoteNotiInterf) UnicastRemoteObject.exportObject(callbackObj, 0);
-			server.registerForCallback(stub);
-		}
-		catch ( Exception e) {
-			System.err.println(e.getMessage());
-		}
-	}
-
-	
-	//LISTENER PULSANTI
-	@Override
-	public void actionPerformed(ActionEvent e) {
-		String pressed = e.getActionCommand();
-		System.out.println(pressed);
-		switch(pressed) {
-			case "Esci":
-				//Richiede la disconnessione dal server e chiude
-                try {
-                    server.unregisterForCallback(stub);
-                } catch (RemoteException e1) {
-                    // TODO Auto-generated catch block
-                    e1.printStackTrace();
-                }
-			    disconnectFromServer();
-				System.exit(0);
-				break;
-			case "Aggiungi":
-				//crea la nuova finestra con due pulsanti (aggiungi amico, aggiungiti ad un gruppo)
-				// e un campo di testo dove inserire il nome del gruppo o dell'amico
-				addWind = new JFrame("Aggiungi");
-				addWind.setSize(380, 220);
-				addWind.setLocation(500, 200);
-				addWind.setLayout(null);
-				
-				JLabel addLabel= new JLabel("Nome amico o gruppo");
-				addLabel.setBounds(30,20,320,20);
-				addWind.add(addLabel);
-				
-				addArea = new JTextArea();
-				addArea.setBounds(30,40,320,20);
-				addWind.add(addArea);
-				
-				JButton addFriend = new JButton("Aggiungi amico");
-				addFriend.setBounds(30,80,320,40);
-				addFriend.addActionListener(this);
-				addWind.add(addFriend);
-				JButton addGroup = new JButton("Aggiungiti ad un gruppo");
-				addGroup.setBounds(30,130,320,40);
-				addGroup.addActionListener(this);
-				addWind.add(addGroup);
-				
-				addWind.setResizable(false);
-				addWind.setVisible(true);
-				break;
-				
-			case "Aggiungi amico":
-				String friendToAdd = addArea.getText();
-				JSONObject mess = new JSONObject();
-				mess.put("OP","ADDFRIEND");
-				mess.put("USERNAME",username);
-				mess.put("FRIEND", friendToAdd);
-				//invio richiesta
-				sendToServer(mess);
-				//aspetto la richiesta e se è andata a buon fine visualizzo l'amico nuovo nella lista degli amici
-				if(afterSend(friendToAdd)) {
-					addWind.setVisible(false);
-				}
-				System.out.println(mess);
-				break;	
-		
-		}
-		
-	}
-	
-	
-	//Funzione che aspetta la risposta del server dopo aver fatto una richiesta
-	private boolean afterSend(String receiver) {
-		Boolean result = true;
-		try {
-		    //legge il messaggio
-			String rec =reader.readLine();
-			JSONParser parser = new JSONParser();
-			JSONObject recJSON = (JSONObject) parser.parse(rec);
-			//recupera l'esito della richiesta
-			result = (Boolean) recJSON.get("RESULT");
-			String errorMess = (String) recJSON.get("ERRORMESS");
-			if(!result) {
-			    //visualizza una finestra di errore
-				visualizeError(errorMess);
-			}
-			else {
-			    // se è andato tutto liscio
-				String resultOp = (String) recJSON.get("OP");
-				//esegue comandi in base all'operazione richiesta in origine
-                switch (resultOp) {
-                    case "ADDFRIEND":
-                        //aggiungo l'amico alla lista degli amici
-                        friendModel.addElement(receiver);
-                }
-			}
-		}
-		catch (Exception e ) {
-			e.getStackTrace();
-		}
-		return result;
-		
-	}
-
-	//invia messaggio al server
-	private void sendToServer(JSONObject mess) {
-		try {
-			writer.write(mess.toJSONString());
-			writer.newLine();
-			writer.flush();
-
-		} catch (IOException e) {
-			//socket chiuso
-			System.out.println("Richiesta la chiusura ma server non raggiungibile");
-		}
-	}
-	
-	//funzione per disconnettersi
-	private void disconnectFromServer() {
-		JSONObject mess = new JSONObject();
-		mess.put("OP","DISCONNECT");
-		mess.put("USERNAME",username);
-		try {
-			writer.write(mess.toJSONString());
-			writer.newLine();
-			writer.flush();
-			writer.close();
-		} catch (IOException e) {
-			//socket chiuso
-			System.out.println("Richiesta la chiusura ma server non raggiungibile");
-		}
-		
-	}
-
-	//visualizza "errorMess" in una finestra
-	private void visualizeError(String errorMess){
-        JFrame infoWind = new JFrame();
-        infoWind.setSize(320,150);
-        infoWind.setLocation(250, 250);
-        infoWind.setLayout(null);
-        JLabel errorMessage = new JLabel (errorMess);
-        errorMessage.setBounds(20, 40, 280, 30);
-        infoWind.add(errorMessage);
-        infoWind.setResizable(false);
-        infoWind.setVisible(true);
-    }
-
-	
-
 }
