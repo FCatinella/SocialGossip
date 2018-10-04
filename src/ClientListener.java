@@ -9,15 +9,15 @@ import java.util.ArrayList;
 //task che comunica con il server
 public class ClientListener extends Thread {
     private Socket sock;
-    private BufferedWriter writer;
     private BufferedReader reader;
     private ClientMenù ui;
+    private String username;
 
-    public ClientListener(Socket sock,ClientMenù ui){
+    public ClientListener(Socket sock,ClientMenù ui,String username){
+        this.username=username;
         this.sock=sock;
         this.ui=ui;
         try {
-            writer = new BufferedWriter(new OutputStreamWriter(this.sock.getOutputStream()));
             reader= new BufferedReader(new InputStreamReader(this.sock.getInputStream()));
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -62,6 +62,16 @@ public class ClientListener extends Thread {
                             String friendToAdd = (String) recJSON.get("FRIEND");
                             ui.addFriendList(friendToAdd);
                             break;
+
+                        case "CHATMESSAGE":
+                            //devo leggere il mesaggio e aggiornare la chat
+                            String message =(String) recJSON.get("CONTENT");
+                            String sender=(String) recJSON.get("USERNAME");
+                            String receiver=(String) recJSON.get("RECEIVER");
+                            if (sender.equals(username)|| receiver.equals(username)){
+                                ui.sendToChatUI(sender,receiver,message);
+                            }
+
                     }
                 }
             } catch (Exception e) {

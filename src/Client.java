@@ -1,22 +1,4 @@
-import java.awt.Font;
-import java.awt.event.*;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.net.Socket;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
-import java.util.*;
-
-import javax.swing.*;
-
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
 public class Client implements Runnable{
 
@@ -32,8 +14,10 @@ public class Client implements Runnable{
 	}
 	@Override
 	public void run() {
+		//avvio thread ui
 	    ClientMenù clientUi= new ClientMenù(username,sock);
-	    ClientListener cl = new ClientListener(sock,clientUi);
+	    //avvio il thread listener
+	    ClientListener cl = new ClientListener(sock,clientUi,username);
 	    cl.start();
 	}
 

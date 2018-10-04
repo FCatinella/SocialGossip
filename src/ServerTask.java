@@ -5,9 +5,13 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+
+import javax.print.DocFlavor;
+
 //Task che il server deve eseguire
 public class ServerTask implements Runnable{
 	JSONObject rec;
@@ -159,6 +163,53 @@ public class ServerTask implements Runnable{
 				}
 				break;
 
+            case "CHATMESSAGE":
+                String receiver =(String) rec.get("RECEIVER");
+                User friend = tabellaUtenti.get(receiver);
+                User sender = tabellaUtenti.get(username);
+                String lang=sender.getLingua();
+                if(friend.isOnline()==1) {
+                    rec.put("RESULT",result);
+                    String originalMess = (String) rec.get("CONTENT");
+                    String fLang = friend.getLingua();
+                    String readMess=null;
+                    String translateMess = originalMess;
+                    if(!fLang.equals(lang)){
+                        String encodedMess=null;
+                        try {
+                            encodedMess = URLEncoder.encode(originalMess, "UTF-8");
+                        } catch (UnsupportedEncodingException ignored) {
+                            // Can be safely ignored because UTF-8 is always supported
+                        }
+                        try{
+                            URL url = new URL("https://api.mymemory.translated.net/get?q="+encodedMess+"&langpair="+lang+"|"+fLang);
+                            URLConnection uc = url.openConnection();
+                            BufferedReader in=new BufferedReader(new InputStreamReader(uc.getInputStream()));
+                            StringBuffer sb=new StringBuffer();
+                            while((readMess=in.readLine())!=null){
+                                sb.append(readMess);
+                            }
+                            System.out.println(sb.toString());
+                            JSONObject translatedJSONMess =(JSONObject) parser.parse(sb.toString());
+                            JSONObject aux =(JSONObject) translatedJSONMess.get("responseData");
+                            translateMess = (String) aux.get("translatedText");
+                        }
+                        catch ( Exception e){
+                            e.printStackTrace();
+                        }
+                    }
+                    risp=(JSONObject)rec.clone();
+                    rec.put("CONTENT",translateMess);
+                    sendToUser(rec,friend);
+                }
+                else {
+                    result=false;
+                    risp.put("ERRORMESS", receiver+" non è online");
+                }
+                break;
+            default:
+			    quit=true;
+
 		}
 		//devo inviare un esito
 		if(!quit){
@@ -178,5 +229,21 @@ public class ServerTask implements Runnable{
 		}
 
 	}
+
+	private void sendToUser(JSONObject mess,User friend){
+        MySocket friendSock = friend.getUserSock();
+        BufferedWriter fWriter = friendSock.writer;
+        //qui traduco il messaggio
+        try {
+            fWriter.write(mess.toJSONString());
+            fWriter.newLine();
+            fWriter.flush();
+
+        } catch (IOException e) {
+            //socket chiuso
+            System.out.println("Richiesta la chiusura ma server non raggiungibile");
+        }
+
+    }
 
 }

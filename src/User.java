@@ -88,4 +88,8 @@ public class User {
         }
         return friendNameList;
     }
+
+    public String getLingua(){
+	    return lingua;
+    }
 }

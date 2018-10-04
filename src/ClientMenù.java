@@ -9,6 +9,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.HashMap;
 
 public class ClientMenù implements ActionListener {
     //elementi interfaccia
@@ -17,6 +18,8 @@ public class ClientMenù implements ActionListener {
     private JFrame addWind = null; //finestra aggiunta amico o gruppo
     private DefaultListModel friendModel = null;
     private JTextArea addArea = null;
+    private HashMap<String,ClientChat> chatAperte;
+
 
     private String username;
 
@@ -29,8 +32,8 @@ public class ClientMenù implements ActionListener {
 
     public ClientMenù(String username, Socket sock){
         this.username=username;
+        this.chatAperte= new HashMap<>();
         createWind();
-
         this.sock=sock;
         try {
             writer = new BufferedWriter(new OutputStreamWriter(this.sock.getOutputStream()));
@@ -106,7 +109,10 @@ public class ClientMenù implements ActionListener {
                     String amico = (String) friendList.getSelectedValue();
                     //devo far partire la finestra della chat
                     System.out.println("Sto clickando su "+amico);
-                    new ClientChat(username,amico);
+                    System.out.println("combo: "+username+amico);
+                    ClientChat aux = new ClientChat(username,amico,writer);
+                    if(chatAperte.containsKey(username+amico)) chatAperte.remove(username+amico);
+                        chatAperte.put(username+amico,aux);
                 }
             }
         };
@@ -253,6 +259,22 @@ public class ClientMenù implements ActionListener {
 
     public void addFriendList(String friend){
         friendModel.addElement(friend);
+    }
+
+    public void sendToChatUI(String sender,String receiver, String message){
+        //vediamo come farlo
+        String ver1 = sender+receiver;
+        String ver2 = receiver+sender;
+        if(chatAperte.containsKey(ver1)){
+            ClientChat cc = chatAperte.get(ver1);
+            cc.chatArea.append(sender+": "+message+"\n");
+        }
+        if(chatAperte.containsKey(ver2)){
+            ClientChat cc = chatAperte.get(ver2);
+            cc.chatArea.append(sender+": "+message+"\n");
+        }
+        System.out.println("ole");
+
     }
 
 }
