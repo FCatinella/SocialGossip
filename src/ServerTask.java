@@ -3,6 +3,7 @@ import java.net.*;
 import java.rmi.RemoteException;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.json.simple.JSONArray;
@@ -16,17 +17,23 @@ import javax.print.DocFlavor;
 public class ServerTask implements Runnable{
 	JSONObject rec;
 	ConcurrentHashMap <String,User> tabellaUtenti;
+    ConcurrentHashMap <String,UserGroup> tabellaGruppi;
 	RMIServerImp RmiServer;
 	BufferedWriter writer;
 	MySocket mSock;
+	Vector<Boolean> tO;
+	Vector<Boolean> qO;
 
 	//prende socket,tabella hash e oggetto rmi dal main
-	public ServerTask(JSONObject jsonMess,MySocket msock, ConcurrentHashMap<String,User> tabellaUtentiArg, RMIServerImp RmiServer) {
+	public ServerTask(JSONObject jsonMess,MySocket msock, ConcurrentHashMap<String,User> tabellaUtentiArg, RMIServerImp RmiServer,ConcurrentHashMap<String,UserGroup> tabellaGruppi,Vector terzoOtt,Vector quartoOtt) {
 		this.rec=jsonMess;
+		this.tabellaGruppi=tabellaGruppi;
 		this.tabellaUtenti=tabellaUtentiArg;
 		this.RmiServer=RmiServer;
 		this.mSock=msock;
 		this.writer=msock.writer;
+		tO=terzoOtt;
+		qO=quartoOtt;
 	}
 	@Override
 	public void run() {
@@ -105,6 +112,13 @@ public class ServerTask implements Runnable{
                 }
                 break;
 
+            case "LISTGROUPS":{
+                User aux = tabellaUtenti.get(username);
+                risp.put("CONTENT",aux.getGroupsList());
+                risp.put("CONTENT2",aux.getGroupsListAddr());
+            }
+            break;
+
 			case "DISCONNECT":
 				//disconnessione di un utente
 				try {
@@ -163,50 +177,115 @@ public class ServerTask implements Runnable{
 				}
 				break;
 
-            case "CHATMESSAGE":
-                String receiver =(String) rec.get("RECEIVER");
+            case "CHATMESSAGE": {
+                String receiver = (String) rec.get("RECEIVER");
                 User friend = tabellaUtenti.get(receiver);
                 User sender = tabellaUtenti.get(username);
-                String lang=sender.getLingua();
-                if(friend.isOnline()==1) {
-                    rec.put("RESULT",result);
+                String lang = sender.getLingua();
+                if (friend.isOnline() == 1) {
+                    rec.put("RESULT", result);
                     String originalMess = (String) rec.get("CONTENT");
                     String fLang = friend.getLingua();
-                    String readMess=null;
+                    String readMess = null;
                     String translateMess = originalMess;
-                    if(!fLang.equals(lang)){
-                        String encodedMess=null;
+                    if (!fLang.equals(lang)) {
+                        String encodedMess = null;
                         try {
                             encodedMess = URLEncoder.encode(originalMess, "UTF-8");
                         } catch (UnsupportedEncodingException ignored) {
                             // Can be safely ignored because UTF-8 is always supported
                         }
-                        try{
-                            URL url = new URL("https://api.mymemory.translated.net/get?q="+encodedMess+"&langpair="+lang+"|"+fLang);
+                        try {
+                            URL url = new URL("https://api.mymemory.translated.net/get?q=" + encodedMess + "&langpair=" + lang + "|" + fLang);
                             URLConnection uc = url.openConnection();
-                            BufferedReader in=new BufferedReader(new InputStreamReader(uc.getInputStream()));
-                            StringBuffer sb=new StringBuffer();
-                            while((readMess=in.readLine())!=null){
+                            BufferedReader in = new BufferedReader(new InputStreamReader(uc.getInputStream()));
+                            StringBuffer sb = new StringBuffer();
+                            while ((readMess = in.readLine()) != null) {
                                 sb.append(readMess);
                             }
                             System.out.println(sb.toString());
-                            JSONObject translatedJSONMess =(JSONObject) parser.parse(sb.toString());
-                            JSONObject aux =(JSONObject) translatedJSONMess.get("responseData");
+                            JSONObject translatedJSONMess = (JSONObject) parser.parse(sb.toString());
+                            JSONObject aux = (JSONObject) translatedJSONMess.get("responseData");
                             translateMess = (String) aux.get("translatedText");
-                        }
-                        catch ( Exception e){
+                        } catch (Exception e) {
                             e.printStackTrace();
                         }
                     }
-                    risp=(JSONObject)rec.clone();
-                    rec.put("CONTENT",translateMess);
-                    sendToUser(rec,friend);
+                    risp = (JSONObject) rec.clone();
+                    rec.put("CONTENT", translateMess);
+                    sendToUser(rec, friend);
+                } else {
+                    result = false;
+                    risp.put("ERRORMESS", receiver + " non è online");
                 }
-                else {
-                    result=false;
-                    risp.put("ERRORMESS", receiver+" non è online");
-                }
+            }
                 break;
+            case "ADDGROUP":
+                String groupToAdd =(String) rec.get("GROUP");
+                User user = tabellaUtenti.get(username);
+                //controllo che il gruppo esista
+                if(tabellaGruppi.containsKey(groupToAdd)){
+                    //controllo che l'utente non sia già nel gruppo
+                    UserGroup gruppo=tabellaGruppi.get(groupToAdd);
+                    if(!gruppo.isMember(user)){
+                        //lo aggiungo
+                        gruppo.addMember(user);
+                        //aggiungo il gruppo alla lista dell'utente
+                        user.addGroup(groupToAdd);
+                        user.addGroupAddr(gruppo.getIpAddr());
+                        risp.put("GROUPADDR",gruppo.getIpAddr());
+                    }
+                    //l'utente è già membro
+                    else{
+                        result=false;
+                        risp.put("ERRORMESS", "Sei già membro di questo gruppo");
+                    }
+                }
+                //il gruppo va creato e aggiunto
+                else{
+                    //devo trovare un ip da assegnare al gruppo
+                    //trasformo il nome del gruppo in un indice
+                    int nameI= nameToIndex(groupToAdd);
+                    //trovo l'ip
+                    String ipChosen = findIp(nameI);
+                    if(ipChosen.equals("INDIRIZZO NON TROVATO")){
+                        //se sono finiti gli indirizzi multicast
+                        result=false;
+                        risp.put("ERRORMESS", "Numero di gruppi massimo raggiunto");
+                    }
+                    else {
+                        UserGroup aux = new UserGroup(ipChosen,4999);
+                        aux.addMember(user);
+                        tabellaGruppi.put(groupToAdd,aux);
+                        user.addGroup(groupToAdd);
+                        user.addGroupAddr(ipChosen);
+                        risp.put("GROUPADDR",ipChosen);
+                    }
+                }
+                risp.put("GROUP",groupToAdd);
+                break;
+
+            case "GROUPMESSAGE":{
+            	//
+                String receiver = (String) rec.get("RECEIVER");
+                UserGroup group = tabellaGruppi.get(receiver);
+                String gpAdd= group.getIpAddr();
+                try{
+                    InetAddress ia = InetAddress.getByName(gpAdd);
+                    byte [] data ;
+                    data = rec.toJSONString().getBytes();
+                    DatagramPacket dp = new DatagramPacket(data,data.length,ia,4999);
+                    MulticastSocket ms = new MulticastSocket(4999);
+                    System.out.println("Multicast: invio su "+gpAdd);
+                    ms.send(dp);
+                    ms.close();
+                }
+                catch (Exception e){
+                    e.printStackTrace();
+                }
+
+            }
+
             default:
 			    quit=true;
 
@@ -244,6 +323,37 @@ public class ServerTask implements Runnable{
             System.out.println("Richiesta la chiusura ma server non raggiungibile");
         }
 
+    }
+
+
+
+    //converto il nome in un indice per gli array
+    int nameToIndex(String nome){
+	    int indice=0;
+	    for (int i=0; i<nome.length();i++){
+            char character = nome.charAt(0); // This gives the character 'a'
+            int ascii = (int) character;
+            indice+=ascii;
+        }
+	    return indice%256;
+    }
+
+    String findIp(int index){
+	    Boolean quit=false;
+        int ind3 = (index/256)%256;
+        int ind4 = index%256;
+	    while(!quit){
+            ind3 = (index/256)%256;
+            ind4 = index%256;
+	        if(tO.get(ind3) && qO.get(ind4)) quit=true;
+	        if(ind3==255 && ind4==255){
+	            quit=true;
+	            return ("INDIRIZZO NON TROVATO");
+            }
+	        index++;
+        }
+        System.out.println("Trovato: "+"239.1."+ind3+"."+ind4);
+        return ("239.1."+ind3+"."+ind4);
     }
 
 }

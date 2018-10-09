@@ -17,8 +17,10 @@ public class ClientMenù implements ActionListener {
     private JTextArea notiList = null; // lista delle notifiche
     private JFrame addWind = null; //finestra aggiunta amico o gruppo
     private DefaultListModel friendModel = null;
+    private DefaultListModel groupModel;
     private JTextArea addArea = null;
     private HashMap<String,ClientChat> chatAperte;
+    private HashMap<String,ClientChat> chatGruppiAperte;
 
 
     private String username;
@@ -33,6 +35,7 @@ public class ClientMenù implements ActionListener {
     public ClientMenù(String username, Socket sock){
         this.username=username;
         this.chatAperte= new HashMap<>();
+        this.chatGruppiAperte = new HashMap<>();
         createWind();
         this.sock=sock;
         try {
@@ -73,6 +76,8 @@ public class ClientMenù implements ActionListener {
         mess.put("USERNAME",username);
         //invio il messaggio e aspetto la risposta
         sendToServer(mess);
+        mess.put("OP","LISTGROUPS");
+        sendToServer(mess);
     }
 
 
@@ -101,7 +106,7 @@ public class ClientMenù implements ActionListener {
         friendModel= new DefaultListModel();
         JList friendList = new JList(friendModel);
         //mouse listener per la Jlist
-        MouseListener mouseListener = new MouseAdapter() {
+        MouseListener mouseListenerAmici = new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
@@ -110,16 +115,14 @@ public class ClientMenù implements ActionListener {
                     //devo far partire la finestra della chat
                     System.out.println("Sto clickando su "+amico);
                     System.out.println("combo: "+username+amico);
-                    ClientChat aux = new ClientChat(username,amico,writer);
+                    //l'intero in fondo indica la modalità della finestra ( 0 = Chat con Amico , 1 = chat con Gruppo )
+                    ClientChat aux = new ClientChat(username,amico,writer,0);
                     if(chatAperte.containsKey(username+amico)) chatAperte.remove(username+amico);
                         chatAperte.put(username+amico,aux);
                 }
             }
         };
-        friendList.addMouseListener(mouseListener);
-
-
-
+        friendList.addMouseListener(mouseListenerAmici);
         //posso selezionare solo un nome della lista
         friendList.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
         friendList.setLayoutOrientation(JList.VERTICAL_WRAP);
@@ -132,8 +135,22 @@ public class ClientMenù implements ActionListener {
         groupsTitolo.setFont(new Font("Arial",Font.PLAIN,14));
         groupsTitolo.setBounds(300,10,200,50);
         finestra.add(groupsTitolo);
-        DefaultListModel groupModel = new DefaultListModel();
+        groupModel = new DefaultListModel();
         JList groupList = new JList(groupModel);
+        MouseListener mouseListenerGruppi = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+                if(e.getClickCount()==2){
+                    String gruppo = (String) groupList.getSelectedValue();
+                    //devo far partire la finestra della chat
+                    ClientChat aux = new ClientChat(username,gruppo,writer,1);
+                    if(chatGruppiAperte.containsKey(gruppo)) chatGruppiAperte.remove(gruppo);
+                    chatGruppiAperte.put(gruppo,aux);
+                }
+            }
+        };
+        groupList.addMouseListener(mouseListenerGruppi);
         groupList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         groupList.setLayoutOrientation(JList.VERTICAL_WRAP);
         JScrollPane groupScrollPane= new JScrollPane(groupList);
@@ -213,7 +230,7 @@ public class ClientMenù implements ActionListener {
                 addWind.setVisible(true);
                 break;
 
-            case "Aggiungi amico":
+            case "Aggiungi amico":{
                 String friendToAdd = addArea.getText();
                 JSONObject mess = new JSONObject();
                 mess.put("OP","ADDFRIEND");
@@ -223,8 +240,21 @@ public class ClientMenù implements ActionListener {
                 sendToServer(mess);
                 //aspetto la richiesta e se è andata a buon fine visualizzo l'amico nuovo nella lista degli amici
                 System.out.println(mess);
+            }
                 break;
 
+            case "Aggiungiti ad un gruppo": {
+                String groupToAdd = addArea.getText();
+                JSONObject mess = new JSONObject();
+                mess.put("OP", "ADDGROUP");
+                mess.put("USERNAME", username);
+                mess.put("GROUP", groupToAdd);
+                //invio richiesta
+                sendToServer(mess);
+                //aspetto la richiesta e se è andata a buon fine visualizzo l'amico nuovo nella lista degli amici
+                System.out.println(mess);
+                break;
+            }
         }
 
     }
@@ -260,21 +290,33 @@ public class ClientMenù implements ActionListener {
     public void addFriendList(String friend){
         friendModel.addElement(friend);
     }
+    public void addGroupList(String group){
+        groupModel.addElement(group);
+    }
 
-    public void sendToChatUI(String sender,String receiver, String message){
+
+    public void sendToChatUI(String sender,String receiver, String message,int mode){
         //vediamo come farlo
         String ver1 = sender+receiver;
         String ver2 = receiver+sender;
-        if(chatAperte.containsKey(ver1)){
-            ClientChat cc = chatAperte.get(ver1);
-            cc.chatArea.append(sender+": "+message+"\n");
+        if(mode==0){
+            if(chatAperte.containsKey(ver1)){
+                ClientChat cc = chatAperte.get(ver1);
+                cc.chatArea.append(sender+": "+message+"\n");
+            }
+            if(chatAperte.containsKey(ver2)){
+                ClientChat cc = chatAperte.get(ver2);
+                cc.chatArea.append(sender+": "+message+"\n");
+            }
         }
-        if(chatAperte.containsKey(ver2)){
-            ClientChat cc = chatAperte.get(ver2);
-            cc.chatArea.append(sender+": "+message+"\n");
+        else {
+            if(chatGruppiAperte.containsKey(receiver)){
+                ClientChat cc = chatGruppiAperte.get(receiver);
+                cc.chatArea.append(sender+": "+message+"\n");
+            }
         }
-        System.out.println("ole");
-
     }
+
+
 
 }

@@ -8,6 +8,8 @@ public class User {
 	private MySocket userSock;
 	private Integer online = 0;
 	private ArrayList<User> amici= new ArrayList<User>();
+	private ArrayList<String> gruppi = new ArrayList<>();
+    private ArrayList<String> gruppiAddr = new ArrayList<>();
 	
 	
 	//costruttore
@@ -87,6 +89,22 @@ public class User {
 	        friendNameList.add(aux.getUsername());
         }
         return friendNameList;
+    }
+
+    public ArrayList<String> getGroupsList(){
+	    return gruppi;
+    }
+
+	public ArrayList<String> getGroupsListAddr(){
+		return gruppiAddr;
+	}
+
+    public void addGroup (String gruppo) {
+	    gruppi.add(gruppo);
+    }
+
+    public void addGroupAddr (String gruppoAddr) {
+        gruppiAddr.add(gruppoAddr);
     }
 
     public String getLingua(){

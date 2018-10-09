@@ -12,6 +12,7 @@ public class ServerMain  {
 		System.out.println("Server Partito!");
 		//creo la tabella degli utenti registrati al servizio (concorrente)
 		ConcurrentHashMap<String,User> tabellaUtenti = new ConcurrentHashMap<String,User>();
+		ConcurrentHashMap<String,UserGroup> tabellaGruppi = new ConcurrentHashMap<String, UserGroup>();
 		//creo l'oggeto remoto in cui saranno registrate le callback dei client
 		RMIServerImp RmiServer= new RMIServerImp(tabellaUtenti);
 
@@ -33,7 +34,7 @@ public class ServerMain  {
 		//------
 
 		//questo è il threadpool che esaudirà le richieste dei vari client
-        ServerListenerTask listener = new ServerListenerTask(tabellaUtenti,RmiServer);
+        ServerListenerTask listener = new ServerListenerTask(tabellaUtenti,RmiServer,tabellaGruppi);
 		System.out.println(InetAddress.getLocalHost().getHostAddress());
 		//creo il socket di welcome sulla porta 1994
 		ServerSocket serverSocket = new ServerSocket (1994);

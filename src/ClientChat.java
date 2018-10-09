@@ -12,18 +12,20 @@ public class ClientChat implements ActionListener{
     JFrame finestra = null;
     JTextArea chatArea;
     JTextField textField;
+    int mode ;
     private BufferedWriter writer;
 
 
-    public ClientChat(String username, String friend,BufferedWriter writer){
+    public ClientChat(String username, String friend,BufferedWriter writer,int mode){
         this.username=username;
         this.friend=friend;
         this.writer=writer;
-        createWindow();
+        this.mode=mode;
+        createWindow(mode);
 
     }
 
-    private void createWindow(){
+    private void createWindow(int mode){
         finestra = new JFrame (username+": Chat con " +friend+" - Social Gossip");
         finestra.setSize(370,500);
         finestra.setLayout(null);
@@ -34,12 +36,20 @@ public class ClientChat implements ActionListener{
         JScrollPane notiScrollPane= new JScrollPane(chatArea);
         notiScrollPane.setBounds(1,1,369,399);
         chatArea.setEditable(false);
-
-        textField= new JTextField();
-        textField.setBounds(100,410,259,40);
-        textField.addKeyListener(new KeyListener());
-        finestra.add(textField);
-
+        //modalità chat
+        if(mode==0){
+            textField= new JTextField();
+            textField.setBounds(100,410,259,40);
+            textField.addKeyListener(new KeyListener());
+            finestra.add(textField);
+            //da aggiungere il pulsante allega file
+        }
+        else {
+            textField= new JTextField();
+            textField.setBounds(10,410,349,40);
+            textField.addKeyListener(new KeyListener());
+            finestra.add(textField);
+        }
         finestra.add(notiScrollPane);
         finestra.show();
     }
@@ -63,10 +73,18 @@ public class ClientChat implements ActionListener{
 
     private JSONObject createMess(){
         JSONObject mess = new JSONObject();
-        mess.put("OP","CHATMESSAGE");
-        mess.put("USERNAME",username);
-        mess.put("RECEIVER",friend);
-        mess.put("CONTENT",textField.getText());
+        if(mode==0){
+            mess.put("OP","CHATMESSAGE");
+            mess.put("USERNAME",username);
+            mess.put("RECEIVER",friend);
+            mess.put("CONTENT",textField.getText());
+        }
+        else {
+            mess.put("OP","GROUPMESSAGE");
+            mess.put("USERNAME",username);
+            mess.put("RECEIVER",friend);
+            mess.put("CONTENT",textField.getText());
+        }
         textField.setText("");
         return mess;
     }
