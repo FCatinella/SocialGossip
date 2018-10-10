@@ -6,7 +6,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.ArrayList;
-import java.util.Iterator;
+
 
 public class ClientGroupListener extends Thread{
 
@@ -33,8 +33,7 @@ public class ClientGroupListener extends Thread{
                     aux.receive(dp);
                     String str=new String(buf);
                     str=str.trim();
-                    execute(str);
-
+                    execute(str,i);
                 }
                 catch (Exception e){
                 }
@@ -44,17 +43,25 @@ public class ClientGroupListener extends Thread{
         // li controlla e guarda quali sono pronti (attesa attiva)
     }
 
-    public void execute(String mess){
+    public void execute(String mess,int i){
        JSONParser parser = new JSONParser();
        try {
            //traduco il messaggio
            System.out.println("Multicast: "+mess);
            JSONObject jsonMess = (JSONObject) parser.parse(mess);
-           String sender =(String) jsonMess.get("USERNAME");
-           String groupReceiver = (String) jsonMess.get("RECEIVER");
-           //faccio quel che devo e passo gli aggiornamenti all'interfaccia
-           String text= (String) jsonMess.get("CONTENT");
-           ui.sendToChatUI(sender,groupReceiver,text,1);
+           String op = (String) jsonMess.get("OP");
+           if(op.equals("DELETEGROUP")){
+               multicastSockets.remove(i);
+               String groupName = (String) jsonMess.get("GROUP");
+               ui.removeGroupList(groupName);
+           }
+           else {
+               String sender =(String) jsonMess.get("USERNAME");
+               String groupReceiver = (String) jsonMess.get("RECEIVER");
+               //faccio quel che devo e passo gli aggiornamenti all'interfaccia
+               String text= (String) jsonMess.get("CONTENT");
+               ui.sendToChatUI(sender,groupReceiver,text,1);
+           }
        }
        catch (Exception e){
            e.printStackTrace();

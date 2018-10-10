@@ -25,6 +25,14 @@ public class ClientChat implements ActionListener{
 
     }
 
+    public void setPosition(int x,int y){
+        finestra.setLocation(x,y);
+    }
+
+    public void close(){
+        finestra.setVisible(false);
+    }
+
     private void createWindow(int mode){
         finestra = new JFrame (username+": Chat con " +friend+" - Social Gossip");
         finestra.setSize(370,500);
@@ -46,9 +54,25 @@ public class ClientChat implements ActionListener{
         }
         else {
             textField= new JTextField();
-            textField.setBounds(10,410,349,40);
+            textField.setBounds(100,410,259,40);
             textField.addKeyListener(new KeyListener());
             finestra.add(textField);
+            JButton delG = new JButton("Elimina");
+            delG.setBounds(10,410,80,40);
+            delG.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    super.mouseClicked(e);
+                    JSONObject mess = new JSONObject();
+                    mess.put("OP","DELETEGROUP");
+                    mess.put("USERNAME",username);
+                    mess.put("GROUP",friend);
+                    sendToServer(mess);
+
+                    finestra.show(false);
+                }
+            });
+            finestra.add(delG);
         }
         finestra.add(notiScrollPane);
         finestra.show();

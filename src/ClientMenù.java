@@ -16,6 +16,7 @@ public class ClientMenù implements ActionListener {
     private JFrame finestra = null; //finestra del client
     private JTextArea notiList = null; // lista delle notifiche
     private JFrame addWind = null; //finestra aggiunta amico o gruppo
+    private JFrame addGroupWind=null; //finestra di creazione gruppo
     private DefaultListModel friendModel = null;
     private DefaultListModel groupModel;
     private JTextArea addArea = null;
@@ -110,14 +111,20 @@ public class ClientMenù implements ActionListener {
             @Override
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
-                if(e.getClickCount()==2){
+                if(e.getClickCount()==2 && friendList.getSelectedValue()!=null){
                     String amico = (String) friendList.getSelectedValue();
                     //devo far partire la finestra della chat
                     System.out.println("Sto clickando su "+amico);
                     System.out.println("combo: "+username+amico);
                     //l'intero in fondo indica la modalità della finestra ( 0 = Chat con Amico , 1 = chat con Gruppo )
                     ClientChat aux = new ClientChat(username,amico,writer,0);
-                    if(chatAperte.containsKey(username+amico)) chatAperte.remove(username+amico);
+                    double offset = 10*Math.random();
+                    int intOff = (int) offset;
+                    aux.setPosition(intOff%100,finestra.getY());
+                    if(chatAperte.containsKey(username+amico)){
+                        chatAperte.get(username+amico).close();
+                        chatAperte.remove(username+amico);
+                    }
                         chatAperte.put(username+amico,aux);
                 }
             }
@@ -141,11 +148,17 @@ public class ClientMenù implements ActionListener {
             @Override
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
-                if(e.getClickCount()==2){
+                if(e.getClickCount()==2 && groupList.getSelectedValue()!=null){
                     String gruppo = (String) groupList.getSelectedValue();
                     //devo far partire la finestra della chat
                     ClientChat aux = new ClientChat(username,gruppo,writer,1);
-                    if(chatGruppiAperte.containsKey(gruppo)) chatGruppiAperte.remove(gruppo);
+                    double offset = 500*Math.random();
+                    int intOff = (int) offset;
+                    aux.setPosition(intOff%1000,finestra.getY());
+                    if(chatGruppiAperte.containsKey(gruppo)){
+                        chatGruppiAperte.get(gruppo).close();
+                        chatGruppiAperte.remove(gruppo);
+                    }
                     chatGruppiAperte.put(gruppo,aux);
                 }
             }
@@ -156,6 +169,15 @@ public class ClientMenù implements ActionListener {
         JScrollPane groupScrollPane= new JScrollPane(groupList);
         groupScrollPane.setBounds(300,50,200,150);
         finestra.add(groupScrollPane);
+
+        //pulsante crea gruppo
+        JButton addGroup = new JButton("+");
+        addGroup.setBounds(450,25,50,20);
+        addGroup.setFont(new Font("Arial",10,10));
+        addGroup.addActionListener(this);
+        finestra.add(addGroup);
+
+
 
         //finestra notifiche
         JLabel notiTitolo = new JLabel ("Notifiche");
@@ -206,7 +228,7 @@ public class ClientMenù implements ActionListener {
                 // e un campo di testo dove inserire il nome del gruppo o dell'amico
                 addWind = new JFrame("Aggiungi");
                 addWind.setSize(380, 220);
-                addWind.setLocation(500, 200);
+                addWind.setLocation(finestra.getX()+100, finestra.getY()+100);
                 addWind.setLayout(null);
 
                 JLabel addLabel= new JLabel("Nome amico o gruppo");
@@ -255,6 +277,35 @@ public class ClientMenù implements ActionListener {
                 System.out.println(mess);
                 break;
             }
+            case "+":{
+                addGroupWind = new JFrame("Crea Gruppo");
+                addGroupWind.setSize(350, 130);
+                addGroupWind.setLocation(finestra.getX()+100, finestra.getY()+100);
+                addGroupWind.setLayout(null);
+                JTextArea groupArea = new JTextArea();
+                groupArea.setBounds(10,10,330,20);
+                JButton cB= new JButton("Crea Gruppo");
+                cB.setBounds(110,50,125,30);
+                cB.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        super.mouseClicked(e);
+                        String groupToAdd = groupArea.getText();
+                        JSONObject mess = new JSONObject();
+                        mess.put("OP", "CREATEGROUP");
+                        mess.put("USERNAME", username);
+                        mess.put("GROUP", groupToAdd);
+                        //invio richiesta
+                        sendToServer(mess);
+                    }
+                });
+                addGroupWind.setResizable(false);
+                addGroupWind.add(cB);
+                addGroupWind.add(groupArea);
+                addGroupWind.show();
+
+
+            }
         }
 
     }
@@ -292,6 +343,9 @@ public class ClientMenù implements ActionListener {
     }
     public void addGroupList(String group){
         groupModel.addElement(group);
+    }
+    public void removeGroupList(String group){
+        groupModel.removeElement(group);
     }
 
 

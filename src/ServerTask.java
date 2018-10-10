@@ -220,51 +220,90 @@ public class ServerTask implements Runnable{
                 }
             }
                 break;
-            case "ADDGROUP":
-                String groupToAdd =(String) rec.get("GROUP");
+            case "ADDGROUP": {
+                String groupToAdd = (String) rec.get("GROUP");
                 User user = tabellaUtenti.get(username);
                 //controllo che il gruppo esista
-                if(tabellaGruppi.containsKey(groupToAdd)){
+                if (tabellaGruppi.containsKey(groupToAdd)) {
                     //controllo che l'utente non sia già nel gruppo
-                    UserGroup gruppo=tabellaGruppi.get(groupToAdd);
-                    if(!gruppo.isMember(user)){
+                    UserGroup gruppo = tabellaGruppi.get(groupToAdd);
+                    if (!gruppo.isMember(user)) {
                         //lo aggiungo
                         gruppo.addMember(user);
                         //aggiungo il gruppo alla lista dell'utente
                         user.addGroup(groupToAdd);
                         user.addGroupAddr(gruppo.getIpAddr());
-                        risp.put("GROUPADDR",gruppo.getIpAddr());
+                        risp.put("GROUPADDR", gruppo.getIpAddr());
+                        risp.put("GROUP",groupToAdd);
                     }
                     //l'utente è già membro
-                    else{
-                        result=false;
+                    else {
+                        result = false;
                         risp.put("ERRORMESS", "Sei già membro di questo gruppo");
                     }
                 }
-                //il gruppo va creato e aggiunto
-                else{
-                    //devo trovare un ip da assegnare al gruppo
-                    //trasformo il nome del gruppo in un indice
-                    int nameI= nameToIndex(groupToAdd);
-                    //trovo l'ip
-                    String ipChosen = findIp(nameI);
-                    if(ipChosen.equals("INDIRIZZO NON TROVATO")){
-                        //se sono finiti gli indirizzi multicast
-                        result=false;
-                        risp.put("ERRORMESS", "Numero di gruppi massimo raggiunto");
-                    }
-                    else {
-                        UserGroup aux = new UserGroup(ipChosen,4999);
-                        aux.addMember(user);
-                        tabellaGruppi.put(groupToAdd,aux);
-                        user.addGroup(groupToAdd);
-                        user.addGroupAddr(ipChosen);
-                        risp.put("GROUPADDR",ipChosen);
-                    }
+                //il gruppo non esiste
+                else {
+                    result=false;
+                    risp.put("ERRORMESS", "Gruppo non esistente");
                 }
-                risp.put("GROUP",groupToAdd);
+            }
                 break;
 
+            case "DELETEGROUP":{
+                //devo rimuovere il gruppo e avvisare tutti i membri di esso
+                String groupToRem = (String) rec.get("GROUP");
+                UserGroup group = tabellaGruppi.get(groupToRem);
+                String gpAdd= group.getIpAddr();
+                try{
+                    InetAddress ia = InetAddress.getByName(gpAdd);
+                    byte [] data ;
+                    data = rec.toJSONString().getBytes();
+                    DatagramPacket dp = new DatagramPacket(data,data.length,ia,4999);
+                    MulticastSocket ms = new MulticastSocket(4999);
+                    System.out.println("Multicast: invio su "+gpAdd);
+                    ms.send(dp);
+                    ms.close();
+                }
+                catch (Exception e){
+                    e.printStackTrace();
+                }
+                User user = tabellaUtenti.get(username);
+                user.removeGroup(groupToRem);
+                user.removeGroupAddr(group.getIpAddr());
+                tabellaGruppi.remove(groupToRem);
+            }
+            break;
+			case "CREATEGROUP":{
+                String groupToAdd = (String) rec.get("GROUP");
+                User user = tabellaUtenti.get(username);
+                if(tabellaGruppi.containsKey(groupToAdd)){
+                    result = false;
+                    risp.put("ERRORMESS", "Gruppo già esistente");
+                    break;
+                }
+                //devo trovare un ip da assegnare al gruppo
+                //trasformo il nome del gruppo in un indice
+                int nameI = nameToIndex(groupToAdd);
+                //trovo l'ip
+                String ipChosen = findIp(nameI);
+                if (ipChosen.equals("INDIRIZZO NON TROVATO")) {
+                    //se sono finiti gli indirizzi multicast
+                    result = false;
+                    risp.put("ERRORMESS", "Numero di gruppi massimo raggiunto");
+                } else {
+                    UserGroup aux = new UserGroup(ipChosen, 4999);
+                    aux.addMember(user);
+                    tabellaGruppi.put(groupToAdd, aux);
+                    user.addGroup(groupToAdd);
+                    user.addGroupAddr(ipChosen);
+                    risp.put("GROUPADDR", ipChosen);
+                }
+                op="ADDGROUP";
+                risp.put("GROUP", groupToAdd);
+
+			}
+            break;
             case "GROUPMESSAGE":{
             	//
                 String receiver = (String) rec.get("RECEIVER");

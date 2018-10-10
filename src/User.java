@@ -107,6 +107,14 @@ public class User {
         gruppiAddr.add(gruppoAddr);
     }
 
+	public void removeGroup (String gruppo) {
+		gruppi.remove(gruppo);
+	}
+
+	public void removeGroupAddr (String gruppoAddr) {
+		gruppiAddr.remove(gruppoAddr);
+	}
+
     public String getLingua(){
 	    return lingua;
     }
