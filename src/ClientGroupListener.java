@@ -2,6 +2,7 @@ import com.sun.org.apache.xml.internal.resolver.readers.ExtendedXMLCatalogReader
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
+import javax.swing.*;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
@@ -53,6 +54,7 @@ public class ClientGroupListener extends Thread{
            if(op.equals("DELETEGROUP")){
                multicastSockets.remove(i);
                String groupName = (String) jsonMess.get("GROUP");
+               ui.sendToChatUI("SISTEMA",groupName,"GRUPPO ELIMINATO",1);
                ui.removeGroupList(groupName);
            }
            else {

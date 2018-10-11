@@ -268,6 +268,7 @@ public class ServerTask implements Runnable{
                 catch (Exception e){
                     e.printStackTrace();
                 }
+                resetIndex(group.getIpAddr());
                 User user = tabellaUtenti.get(username);
                 user.removeGroup(groupToRem);
                 user.removeGroupAddr(group.getIpAddr());
@@ -384,15 +385,27 @@ public class ServerTask implements Runnable{
 	    while(!quit){
             ind3 = (index/256)%256;
             ind4 = index%256;
-	        if(tO.get(ind3) && qO.get(ind4)) quit=true;
-	        if(ind3==255 && ind4==255){
+	        if(tO.get(ind3) && qO.get(ind4)){
 	            quit=true;
+	            tO.set(ind3,false);
+	            qO.set(ind4,false);
+            }
+	        if(ind3==255 && ind4==255){
 	            return ("INDIRIZZO NON TROVATO");
             }
 	        index++;
         }
         System.out.println("Trovato: "+"239.1."+ind3+"."+ind4);
         return ("239.1."+ind3+"."+ind4);
+    }
+
+    void resetIndex(String ipAddr){
+        String sub = ipAddr.substring(6);
+        int pointIdx= sub.lastIndexOf(".");
+        int ind3 = Integer.parseInt(sub.substring(0,pointIdx));
+        int ind4 = Integer.parseInt(sub.substring(pointIdx+1));
+        tO.set(ind3,true);
+        qO.set(ind4,true);
     }
 
 }
