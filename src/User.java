@@ -10,7 +10,8 @@ public class User {
 	private ArrayList<User> amici= new ArrayList<User>();
 	private ArrayList<String> gruppi = new ArrayList<>();
     private ArrayList<String> gruppiAddr = new ArrayList<>();
-	
+    private String ip;
+
 	
 	//costruttore
 	public User(String nome, String pass,String lang) {
@@ -30,7 +31,15 @@ public class User {
 	    return userSock;
     }
 
-	public Integer isOnline() {
+    public void updateIp(String newip){
+		ip=newip;
+	}
+
+    public String getIp() {
+        return ip;
+    }
+
+    public Integer isOnline() {
 		return this.online;
 	}
 	

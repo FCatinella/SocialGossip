@@ -6,6 +6,7 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
 
 //task che comunica con il server
@@ -38,7 +39,19 @@ public class ClientListener extends Thread {
         while (quit) {
             try {
                 //legge il messaggio
-                String rec = reader.readLine();
+                if(sock.isClosed()){
+                    quit=false;
+                    break;
+                }
+                String rec;
+                try{
+                    rec = reader.readLine();
+                }
+                catch (SocketException e){
+                    System.out.println("Socket chiuso");
+                    quit=false;
+                    break;
+                }
                 JSONParser parser = new JSONParser();
                 JSONObject recJSON = (JSONObject) parser.parse(rec);
 
@@ -120,11 +133,73 @@ public class ClientListener extends Thread {
                             cgl.start();
                             break;
 
+                        case "RECEIVEFILE-ACK":
+                            //invio di un file
+                            /*
+                            - Scelgo il file tramite finestra
+                            - Apro un nuovo socket
+                            - Invio il socket su cui si deve connettere il client che lo riceve
+                            - Scrivo il file nel socket
+                             */
+                            String filename=(String) recJSON.get("FILENAME");
+                            File file = new File(filename);
+                            //avviso che sto per inviare un file
+                            //.......roba
+                            //task che invia il file
+                            try{
+                                InetAddress inetAddress = InetAddress.getLocalHost();
+                                //recupero l'ip
+                                String clientIp=(String) recJSON.get("IP");
+                                int clientPort= ((Long)recJSON.get("PORT")).intValue();
+                                SendFileTask sft= new SendFileTask(file,clientIp,clientPort);
+                                //avvio il task in un nuovo thread
+                                sft.start();
+                            }
+                            catch ( Exception e1){
+                                e1.printStackTrace();
+                            }
+
+
+                            break;
+                        case "RECEIVEFILE":{
+                            //devo ricevere il file
+                            System.out.println("Ricevo file");
+                            JSONObject ackMess = new JSONObject();
+                            ackMess.put("OP","RECEIVEFILE-ACK");
+                            String senderFile= (String) recJSON.get("SENDER");
+                            String fileName=(String) recJSON.get("FILENAME");
+                            ackMess.put("SENDER",senderFile);
+                            ackMess.put("RECEIVER",username);
+                            ackMess.put("FILENAME",fileName);
+                            ackMess.put("IP",InetAddress.getLocalHost().getHostAddress());
+                            int port;
+                            for (port=1995;port<65536;port++){
+                                if(checkPort(port)) break;
+                            }
+                            if(port<65537){
+                                ackMess.put("PORT",port);
+                                ReceiveFileTask rft= new ReceiveFileTask(fileName,port);
+                                rft.start();
+
+                                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(this.sock.getOutputStream()));
+                                try {
+                                    writer.write(ackMess.toJSONString());
+                                    writer.newLine();
+                                    writer.flush();
+
+                                } catch (IOException e) {
+                                    //socket chiuso
+                                    System.out.println("Richiesta la chiusura ma server non raggiungibile");
+                                }
+                            }
+
+
+                        }
+                        break;
                     }
                 }
             } catch (Exception e) {
-
-
+                e.printStackTrace();
             }
         }
     }
@@ -155,5 +230,16 @@ public class ClientListener extends Thread {
         infoWind.add(errorMessage);
         infoWind.setResizable(false);
         infoWind.setVisible(true);
+    }
+
+    public Boolean checkPort(int i){
+        try{
+            Socket aux = new Socket("localhost",i);
+            aux.close();
+            return false;
+        }
+        catch(IOException e ){
+            return true;
+        }
     }
 }

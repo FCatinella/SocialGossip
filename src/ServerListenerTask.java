@@ -20,7 +20,7 @@ public class ServerListenerTask implements Runnable {
     //task che si occupa di leggere dai socket i messaggi -> si comporta come una select ( fa un pò di attesa attiva )
     public ServerListenerTask(ConcurrentHashMap<String,User> tabellaUtentiArg, RMIServerImp RmiServer,ConcurrentHashMap<String,UserGroup> tabellaGruppi){
         //lista di socket da cui ricevere i messaggi
-        listaSocket = new CopyOnWriteArrayList<MySocket>();
+        listaSocket = new CopyOnWriteArrayList<>();
         //threadpool a cui fare eseguire i task
         threadpool = new ThreadPoolServer();
         tabella=tabellaUtentiArg;

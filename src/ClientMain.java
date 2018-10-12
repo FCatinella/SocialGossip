@@ -160,6 +160,13 @@ public class ClientMain extends JFrame implements ActionListener{
 				break;
 			case "Login":
 				mess.put("OP","CONNECT");
+				try{
+					String ipAddr= InetAddress.getLocalHost().getHostAddress();
+					mess.put("IP",ipAddr);
+				}
+				catch(Exception e){
+					e.printStackTrace();
+				}
 				break;
 		}
 		
@@ -238,7 +245,7 @@ public class ClientMain extends JFrame implements ActionListener{
 	private Boolean connectToServer() {
 		try {
 			//Ottengo l'indirizzo IP (localhost al momento)
-			local = InetAddress.getByName("127.0.0.1");
+			local = InetAddress.getByName("localhost");
 		} 
 		catch (UnknownHostException e) {
 			//Indirizzo sconosciuto

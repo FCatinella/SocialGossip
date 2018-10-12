@@ -77,7 +77,8 @@ public class ServerTask implements Runnable{
 						if(aux.isOnline()==0){
 							aux.connect();
 							aux.updateSock(mSock.socket);
-
+							String ip = (String) rec.get("IP");
+							aux.updateIp(ip);
                         }
 						else {
 							risp.put("ERRORMESS", "Utente già connesso");
@@ -254,25 +255,27 @@ public class ServerTask implements Runnable{
                 //devo rimuovere il gruppo e avvisare tutti i membri di esso
                 String groupToRem = (String) rec.get("GROUP");
                 UserGroup group = tabellaGruppi.get(groupToRem);
-                String gpAdd= group.getIpAddr();
-                try{
-                    InetAddress ia = InetAddress.getByName(gpAdd);
-                    byte [] data ;
-                    data = rec.toJSONString().getBytes();
-                    DatagramPacket dp = new DatagramPacket(data,data.length,ia,4999);
-                    MulticastSocket ms = new MulticastSocket(4999);
-                    System.out.println("Multicast: invio su "+gpAdd);
-                    ms.send(dp);
-                    ms.close();
+                if(group!=null){
+                    String gpAdd= group.getIpAddr();
+                    try{
+                        InetAddress ia = InetAddress.getByName(gpAdd);
+                        byte [] data ;
+                        data = rec.toJSONString().getBytes();
+                        DatagramPacket dp = new DatagramPacket(data,data.length,ia,4999);
+                        MulticastSocket ms = new MulticastSocket(4999);
+                        System.out.println("Multicast: invio su "+gpAdd);
+                        ms.send(dp);
+                        ms.close();
+                    }
+                    catch (Exception e){
+                        e.printStackTrace();
+                    }
+                    resetIndex(group.getIpAddr());
+                    User user = tabellaUtenti.get(username);
+                    user.removeGroup(groupToRem);
+                    user.removeGroupAddr(group.getIpAddr());
+                    tabellaGruppi.remove(groupToRem);
                 }
-                catch (Exception e){
-                    e.printStackTrace();
-                }
-                resetIndex(group.getIpAddr());
-                User user = tabellaUtenti.get(username);
-                user.removeGroup(groupToRem);
-                user.removeGroupAddr(group.getIpAddr());
-                tabellaGruppi.remove(groupToRem);
             }
             break;
 			case "CREATEGROUP":{
@@ -309,23 +312,57 @@ public class ServerTask implements Runnable{
             	//
                 String receiver = (String) rec.get("RECEIVER");
                 UserGroup group = tabellaGruppi.get(receiver);
-                String gpAdd= group.getIpAddr();
-                try{
-                    InetAddress ia = InetAddress.getByName(gpAdd);
-                    byte [] data ;
-                    data = rec.toJSONString().getBytes();
-                    DatagramPacket dp = new DatagramPacket(data,data.length,ia,4999);
-                    MulticastSocket ms = new MulticastSocket(4999);
-                    System.out.println("Multicast: invio su "+gpAdd);
-                    ms.send(dp);
-                    ms.close();
-                }
-                catch (Exception e){
-                    e.printStackTrace();
+                if(group!=null){
+                    String gpAdd= group.getIpAddr();try{
+                        InetAddress ia = InetAddress.getByName(gpAdd);
+                        byte [] data ;
+                        data = rec.toJSONString().getBytes();
+                        DatagramPacket dp = new DatagramPacket(data,data.length,ia,4999);
+                        MulticastSocket ms = new MulticastSocket(4999);
+                        System.out.println("Multicast: invio su "+gpAdd);
+                        ms.send(dp);
+                        ms.close();
+                    }
+                    catch (Exception e){
+                        e.printStackTrace();
+                    }
+
                 }
 
             }
+            break;
+            case "SENDFILE":{
+                String receiver = (String) rec.get("FRIEND");
+                User fR = tabellaUtenti.get(receiver);
+                if(fR!=null && fR.isOnline()==1){
+                    // avvisare il client ricevente che sta per arrivare un file
+                    JSONObject warnMess = new JSONObject();
+                    warnMess.put("OP","RECEIVEFILE");
+                    warnMess.put("RESULT",true);
+                    warnMess.put("SENDER",username);
+                    String filename=(String) rec.get("FILENAME");
+                    warnMess.put("FILENAME",filename);
+                    sendToUser(warnMess,fR);
+                    quit=true;
+                }
+                else{
+                    risp.put("ERRORMESS","L'utente non è online");
+                    result=false;
+                }
+            }
+            break;
 
+            case "RECEIVEFILE-ACK":{
+                //inoltro il messaggio al mittente
+                risp=rec;
+                risp.put("RESULT",true);
+                String senderName=(String) rec.get("SENDER");
+                User sender = tabellaUtenti.get(senderName);
+                sendToUser(risp,sender);
+                quit=true;
+                break;
+
+            }
             default:
 			    quit=true;
 

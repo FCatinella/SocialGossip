@@ -4,6 +4,9 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.File;
+import java.net.InetAddress;
+import java.net.Socket;
 
 public class ClientChat implements ActionListener{
     //variabili
@@ -51,6 +54,29 @@ public class ClientChat implements ActionListener{
             textField.addKeyListener(new KeyListener());
             finestra.add(textField);
             //da aggiungere il pulsante allega file
+            JButton sendFileB = new JButton("File");
+            sendFileB.setBounds(10,410,80,40);
+            sendFileB.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    super.mouseClicked(e);
+                    JSONObject mess = new JSONObject();
+                    JFileChooser jfc= new JFileChooser();
+                    jfc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+                    int n = jfc.showOpenDialog(new JFrame());
+                    if(n==JFileChooser.APPROVE_OPTION) {
+                        String filename = jfc.getSelectedFile().getAbsolutePath();
+                        mess.put("OP", "SENDFILE");
+                        mess.put("FILENAME",filename);
+                        mess.put("USERNAME", username);
+                        mess.put("FRIEND", friend);
+                        sendToServer(mess);
+                    }
+
+                }
+            });
+            finestra.add(sendFileB);
+
         }
         else {
             textField= new JTextField();
