@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.HashMap;
 
 public class ClientChat implements ActionListener{
     //variabili
@@ -17,13 +18,15 @@ public class ClientChat implements ActionListener{
     JTextField textField;
     int mode ;
     private BufferedWriter writer;
+    HashMap<String,ClientChat> chatAperte;
 
 
-    public ClientChat(String username, String friend,BufferedWriter writer,int mode){
+    public ClientChat(String username, String friend, BufferedWriter writer, int mode, HashMap<String,ClientChat> chatAperte){
         this.username=username;
         this.friend=friend;
         this.writer=writer;
         this.mode=mode;
+        this.chatAperte=chatAperte;
         createWindow(mode);
 
     }
@@ -41,6 +44,15 @@ public class ClientChat implements ActionListener{
         finestra.setSize(370,500);
         finestra.setLayout(null);
         finestra.setResizable(false);
+
+        finestra.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                super.windowClosing(e);
+                chatAperte.remove(username+friend);
+            }
+        });
+
 
         chatArea = new JTextArea();
         chatArea.setSize(369,399);

@@ -93,6 +93,22 @@ public class ClientMenù implements ActionListener {
         finestra.setLocation(400, 100);
         finestra.setLayout(null);
 
+        finestra.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                super.windowClosing(e);
+                //Richiede la disconnessione dal server e chiude
+                try {
+                    server.unregisterForCallback(stub);
+                } catch (RemoteException e1) {
+                    // TODO Auto-generated catch block
+                    e1.printStackTrace();
+                }
+                disconnectFromServer();
+                System.exit(0);
+            }
+        });
+
         //nome utente
         JLabel userTitolo = new JLabel(username);
         userTitolo.setFont(new Font("Arial",Font.BOLD,17));
@@ -117,7 +133,7 @@ public class ClientMenù implements ActionListener {
                     System.out.println("Sto clickando su "+amico);
                     System.out.println("combo: "+username+amico);
                     //l'intero in fondo indica la modalità della finestra ( 0 = Chat con Amico , 1 = chat con Gruppo )
-                    ClientChat aux = new ClientChat(username,amico,writer,0);
+                    ClientChat aux = new ClientChat(username,amico,writer,0,chatAperte);
                     double offset = 10*Math.random();
                     int intOff = (int) offset;
                     aux.setPosition(intOff%100,finestra.getY());
@@ -151,7 +167,7 @@ public class ClientMenù implements ActionListener {
                 if(e.getClickCount()==2 && groupList.getSelectedValue()!=null){
                     String gruppo = (String) groupList.getSelectedValue();
                     //devo far partire la finestra della chat
-                    ClientChat aux = new ClientChat(username,gruppo,writer,1);
+                    ClientChat aux = new ClientChat(username,gruppo,writer,1,chatAperte);
                     double offset = 500*Math.random();
                     int intOff = (int) offset;
                     aux.setPosition(intOff%1000,finestra.getY());
@@ -358,9 +374,18 @@ public class ClientMenù implements ActionListener {
                 ClientChat cc = chatAperte.get(ver1);
                 cc.chatArea.append(sender+": "+message+"\n");
             }
-            if(chatAperte.containsKey(ver2)){
+            else if(chatAperte.containsKey(ver2)){
                 ClientChat cc = chatAperte.get(ver2);
                 cc.chatArea.append(sender+": "+message+"\n");
+            }
+            else{
+                //non c'è nessuna chat aperta
+                ClientChat aux = new ClientChat(receiver,sender,writer,0,chatAperte);
+                double offset = 10*Math.random();
+                int intOff = (int) offset;
+                aux.setPosition(intOff%100,finestra.getY());
+                chatAperte.put(receiver+sender,aux);
+                aux.chatArea.append(sender+":"+message+"\n");
             }
         }
         else {

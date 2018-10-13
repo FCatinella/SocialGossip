@@ -1,4 +1,5 @@
 import javax.swing.*;
+import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.net.InetSocketAddress;
@@ -34,7 +35,7 @@ public class ReceiveFileTask extends Thread {
             System.out.println("ServerSocket arriva qualcosa");
             FileChannel fc =null;
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-            String nomefile = filename.substring(filename.lastIndexOf("/"));
+            String nomefile = filename.substring(filename.lastIndexOf("/")+1);
             String path = System.getProperty("user.home")+"/"+timeStamp+"-"+nomefile;
 
             try{
@@ -57,7 +58,9 @@ public class ReceiveFileTask extends Thread {
             //file ricevuto
             System.out.println("Salvo in:"+path);
             JFrame filemess = new JFrame("Hai ricevuto un file!");
-            filemess.setSize(150,50);
+            filemess.setSize(350,150);
+            filemess.add(new JLabel("Hai ricevuto un nuovo messaggio"));
+            filemess.setLocation(MouseInfo.getPointerInfo().getLocation());
             filemess.show();
             a.close();
             s.close();
