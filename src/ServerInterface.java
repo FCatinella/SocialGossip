@@ -1,7 +1,8 @@
 import java.rmi.*;
+//interfaccia server remoto
 public interface ServerInterface extends Remote{
 	/* registrazione per la callback */
-	public void registerForCallback (RemoteNotiInterf ClientInterface) throws RemoteException;
+	void registerForCallback (RemoteNotiInterf ClientInterface) throws RemoteException;
 	/* cancella registrazione per la callback */
-	public void unregisterForCallback (RemoteNotiInterf ClientInterface) throws RemoteException;
+	void unregisterForCallback (RemoteNotiInterf ClientInterface) throws RemoteException;
 }

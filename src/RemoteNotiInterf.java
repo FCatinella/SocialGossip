@@ -1,6 +1,7 @@
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
+//interfaccia oggetto remoto che aggiornerà l'interfaccia
 public interface RemoteNotiInterf extends Remote {
 
 	//visualizza la notifica dell'utente connesso

@@ -11,7 +11,7 @@ public class RMIServerImp extends RemoteObject implements ServerInterface{
 	public RMIServerImp(ConcurrentHashMap<String,User> tabellaUtenti){
 		super();
 		//devo usare l'iterfaccia come tipo perchè il server non conosce l'ogetto vero e proprio
-		clients = new ArrayList<RemoteNotiInterf>();
+		clients = new ArrayList<>();
 		this.tabellaUtenti=tabellaUtenti;
 	}
 	
@@ -26,7 +26,6 @@ public class RMIServerImp extends RemoteObject implements ServerInterface{
 
 	//"deregistro" un client
 	public void unregisterForCallback(RemoteNotiInterf ClientInterface){
-		// TODO Auto-generated method stub
 		if(clients.contains(ClientInterface)) {
 			clients.remove(ClientInterface);
 			System.out.println("Utente CallBack deregistrata");

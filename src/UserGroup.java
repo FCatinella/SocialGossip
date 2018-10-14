@@ -4,14 +4,12 @@ import java.util.ArrayList;
 
 
 public class UserGroup {
-    ArrayList<User> partecipanti;
+    ArrayList<String> partecipanti; //lista dei membri del gruppo
     InetAddress multiCastAddr;
-    int ipPort;
-    String ipAddr;
+    String ipAddr; //indirizzo ip
 
-    public UserGroup(String ip,int port){
+    public UserGroup(String ip){
         partecipanti = new ArrayList<>();
-        ipPort=port;
         ipAddr=ip;
         try {
             multiCastAddr = InetAddress.getByName(ip);
@@ -21,23 +19,21 @@ public class UserGroup {
         }
     }
 
-    public void addMember(User user){
+    public void addMember(String user){
         partecipanti.add(user);
     }
 
-    public Boolean isMember(User user){
+    public ArrayList<String> getPartecipanti() {
+        return partecipanti;
+    }
+
+    public Boolean isMember(String user){
         return partecipanti.contains(user);
     }
 
-    public int getIpPort() {
-        return ipPort;
-    }
 
     public String getIpAddr() {
         return ipAddr;
     }
 
-    public InetAddress getMultiCastAddr() {
-        return multiCastAddr;
-    }
 }

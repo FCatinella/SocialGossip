@@ -6,6 +6,7 @@ public class MySocket{
     BufferedWriter writer;
     Socket socket;
 
+    //oggetto che contiene da subito i due Buffer
     public MySocket(Socket sock){
          InputStream in = null;
          OutputStream out= null;

@@ -1,8 +1,5 @@
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
-
-import java.io.*;
 import java.net.Socket;
 import java.util.Iterator;
 import java.util.Vector;
@@ -13,8 +10,9 @@ public class ServerListenerTask implements Runnable {
     private CopyOnWriteArrayList<MySocket> listaSocket;
     private ThreadPoolServer threadpool;
     private ConcurrentHashMap<String,User> tabella;
-    private RMIServerImp RMI;
+    private RMIServerImp RMI; //server RMI
     private ConcurrentHashMap<String,UserGroup> tabellaGruppi;
+
 
 
     //task che si occupa di leggere dai socket i messaggi -> si comporta come una select ( fa un pò di attesa attiva )
@@ -37,16 +35,20 @@ public class ServerListenerTask implements Runnable {
 
     public void run(){
 
-        Vector<Boolean> tO = new Vector<>();
-        Vector<Boolean> qO = new Vector<>();
+        //MULTICAST----
+        //vettori di booleani che segnano quali indirizzi multicast sono utilizzati
+        Vector<Boolean> tO = new Vector<>(); //terzo ottetto di bit
+        Vector<Boolean> qO = new Vector<>(); //quarto ottetto di bit
+        //all'inizio sono tutti disponibili
         for (int i = 0; i < 256 ; i++) {
             tO.add(i,true);
             qO.add(i,true);
         }
+        //--------------
+
         //leggo la richiesta dal socket e la faccio esaudire da un thread
-        Boolean stop = false;
         JSONParser parser = new JSONParser();
-        while (!stop){
+        while (true){
             Iterator i = listaSocket.iterator();
             while (i.hasNext()){
                 MySocket mSock = (MySocket) i.next();

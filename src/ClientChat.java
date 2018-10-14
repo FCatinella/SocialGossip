@@ -1,32 +1,33 @@
 import org.json.simple.JSONObject;
-
 import javax.swing.*;
 import java.awt.event.*;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.File;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class ClientChat implements ActionListener{
+/*
+    Intefaccia della chat sia tra utenti che tra gruppi
+ */
+
+public class ClientChat{
     //variabili
-    String username=""; //nome utente
-    String friend=""; //nome amico con cui si sta chattando
+    String username; //nome utente
+    String friend; //nome amico con cui si sta chattando
     JFrame finestra = null;
     JTextArea chatArea;
     JTextField textField;
-    int mode ;
-    private BufferedWriter writer;
-    HashMap<String,ClientChat> chatAperte;
+    int mode ; // modalità della chat (0 = tra utenti, 1 = chat di gruppo)
+    private BufferedWriter writer; // canale per comunicare con il server
+    ConcurrentHashMap<String,ClientChat> chatAperte; // hashmap che contiene le chat che sono aperte
 
 
-    public ClientChat(String username, String friend, BufferedWriter writer, int mode, HashMap<String,ClientChat> chatAperte){
+    public ClientChat(String username, String friend, BufferedWriter writer, int mode, ConcurrentHashMap<String,ClientChat> chatAperte){
         this.username=username;
         this.friend=friend;
         this.writer=writer;
         this.mode=mode;
         this.chatAperte=chatAperte;
+        //creo la finestra
         createWindow(mode);
 
     }
@@ -45,6 +46,7 @@ public class ClientChat implements ActionListener{
         finestra.setLayout(null);
         finestra.setResizable(false);
 
+        //quando la finestra viene chiusa la rimuove dalle chat aperte
         finestra.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -53,19 +55,21 @@ public class ClientChat implements ActionListener{
             }
         });
 
-
+        //area dedicata ai messaggi in chat
         chatArea = new JTextArea();
         chatArea.setSize(369,399);
         JScrollPane notiScrollPane= new JScrollPane(chatArea);
         notiScrollPane.setBounds(1,1,369,399);
         chatArea.setEditable(false);
-        //modalità chat
+
+        //modalità chat tra utenti
         if(mode==0){
+            //campo di testo
             textField= new JTextField();
             textField.setBounds(100,410,259,40);
-            textField.addKeyListener(new KeyListener());
+            textField.addKeyListener(new KeyListener()); //quando premo "invio",invia il messaggio
             finestra.add(textField);
-            //da aggiungere il pulsante allega file
+            //pulsante allega file
             JButton sendFileB = new JButton("File");
             sendFileB.setBounds(10,410,80,40);
             sendFileB.addMouseListener(new MouseAdapter() {
@@ -73,28 +77,31 @@ public class ClientChat implements ActionListener{
                 public void mouseClicked(MouseEvent e) {
                     super.mouseClicked(e);
                     JSONObject mess = new JSONObject();
+                    //seleziono il file che voglio inviare
                     JFileChooser jfc= new JFileChooser();
                     jfc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
                     int n = jfc.showOpenDialog(new JFrame());
-                    if(n==JFileChooser.APPROVE_OPTION) {
-                        String filename = jfc.getSelectedFile().getAbsolutePath();
+                    if(n==JFileChooser.APPROVE_OPTION) { // se ho scelto un file
+                        String filename = jfc.getSelectedFile().getAbsolutePath(); //recupero il path+nome
+                        //informo il server che dovrà informare il client ricevente
                         mess.put("OP", "SENDFILE");
                         mess.put("FILENAME",filename);
                         mess.put("USERNAME", username);
                         mess.put("FRIEND", friend);
                         sendToServer(mess);
                     }
-
                 }
             });
             finestra.add(sendFileB);
-
         }
+        //modalità chat di gruppo
         else {
+            //campo di testo
             textField= new JTextField();
             textField.setBounds(100,410,259,40);
             textField.addKeyListener(new KeyListener());
             finestra.add(textField);
+            //pulsante per eliminare il gruppo
             JButton delG = new JButton("Elimina");
             delG.setBounds(10,410,80,40);
             delG.addMouseListener(new MouseAdapter() {
@@ -102,11 +109,12 @@ public class ClientChat implements ActionListener{
                 public void mouseClicked(MouseEvent e) {
                     super.mouseClicked(e);
                     JSONObject mess = new JSONObject();
+                    //informo il server che ho chiuso il gruppo
+                    // il server informerà tutti i partecipanti
                     mess.put("OP","DELETEGROUP");
                     mess.put("USERNAME",username);
                     mess.put("GROUP",friend);
                     sendToServer(mess);
-
                     finestra.show(false);
                 }
             });
@@ -116,16 +124,15 @@ public class ClientChat implements ActionListener{
         finestra.show();
     }
 
-    @Override
-    public void actionPerformed(ActionEvent e){
-    }
 
+    //Quando premo "Invio", invia il messaggio
     class KeyListener extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
             super.keyPressed(e);
             if(e.getKeyCode()==10){
                 System.out.println("Invio il messaggio");
+                //crea il messaggio e lo invia
                 JSONObject mess = createMess();
                 sendToServer(mess);
             }
@@ -133,24 +140,25 @@ public class ClientChat implements ActionListener{
     }
 
 
+    //funzione che crea il messaggio JSON
     private JSONObject createMess(){
         JSONObject mess = new JSONObject();
+        //se è un messaggio per una chat
         if(mode==0){
             mess.put("OP","CHATMESSAGE");
-            mess.put("USERNAME",username);
-            mess.put("RECEIVER",friend);
-            mess.put("CONTENT",textField.getText());
         }
+        //è un messaggio di gruppo
         else {
             mess.put("OP","GROUPMESSAGE");
-            mess.put("USERNAME",username);
-            mess.put("RECEIVER",friend);
-            mess.put("CONTENT",textField.getText());
         }
+        mess.put("USERNAME",username);
+        mess.put("RECEIVER",friend);
+        mess.put("CONTENT",textField.getText());
         textField.setText("");
         return mess;
     }
 
+    //invia il messaggio al server
     private void sendToServer(JSONObject mess) {
         try {
             writer.write(mess.toJSONString());
@@ -162,6 +170,5 @@ public class ClientChat implements ActionListener{
             System.out.println("Richiesta la chiusura ma server non raggiungibile");
         }
     }
-
 
 }

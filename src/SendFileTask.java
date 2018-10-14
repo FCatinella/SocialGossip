@@ -6,8 +6,9 @@ import java.nio.channels.SocketChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
-public class SendFileTask extends Thread {
 
+//task che riceve un file
+public class SendFileTask extends Thread {
     File toSend;
     SocketChannel sc;
     String ipReceiver;
@@ -17,8 +18,6 @@ public class SendFileTask extends Thread {
         this.toSend=toSend;
         ipReceiver=ip;
         this.port=port;
-
-
     }
 
     @Override
@@ -27,13 +26,15 @@ public class SendFileTask extends Thread {
         try{
             //devo collegarmi con il ricevente
             System.out.println("Provo a connettermi su: "+ipReceiver+" "+port);
+            //mi connetto al socket che ha aperto il ricevente usando ip e porta che mi ha fornito
             SocketAddress address = new InetSocketAddress(ipReceiver,port);
             sc=SocketChannel.open();
             sc.connect(address);
-
+            //apro il Filechannel
             FileChannel inFc= FileChannel.open(Paths.get(toSend.getAbsolutePath()), StandardOpenOption.READ);
             //ora devo scrivere direttamente nel channel
             System.out.println("Invio il file");
+            //leggo dal file e scrivo nel channel a cui sono connesso
             inFc.transferTo(0,inFc.size(),sc);
 
         }
@@ -41,6 +42,7 @@ public class SendFileTask extends Thread {
             e.printStackTrace();
         }
         try{
+            //chiudo il socket quando ho finito di inviare
             sc.close();
         }
         catch (Exception e){

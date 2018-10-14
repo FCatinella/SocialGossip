@@ -6,7 +6,7 @@ public class ThreadPoolServer {
 	public ThreadPoolServer() {
 		threadpool=(ThreadPoolExecutor) Executors.newCachedThreadPool();
 	}
-	
+	//esegue il task
 	public void executeTask (Runnable task) {
 		threadpool.execute(task);
 	}

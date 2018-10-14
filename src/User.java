@@ -2,16 +2,14 @@ import java.net.Socket;
 import java.util.*;
 
 public class User {
-	private String Username = "";
-	private String lingua = "";
-	private String password = "";
-	private MySocket userSock;
-	private Integer online = 0;
-	private ArrayList<User> amici= new ArrayList<User>();
-	private ArrayList<String> gruppi = new ArrayList<>();
-    private ArrayList<String> gruppiAddr = new ArrayList<>();
-    private String ip;
-
+	private String Username; //nome dell'utente
+	private String lingua; //lingua con cui si è registrato
+	private String password;
+	private MySocket userSock; //il socket a cui è connesso
+	private Integer online = 0; //se è online o no
+	private ArrayList<User> amici= new ArrayList<>(); //lista degli amici
+	private ArrayList<String> gruppi = new ArrayList<>(); //lista dei gruppi
+    private ArrayList<String> gruppiAddr = new ArrayList<>(); //lista degli indirizzi dei gruppi
 	
 	//costruttore
 	public User(String nome, String pass,String lang) {
@@ -31,13 +29,6 @@ public class User {
 	    return userSock;
     }
 
-    public void updateIp(String newip){
-		ip=newip;
-	}
-
-    public String getIp() {
-        return ip;
-    }
 
     public Integer isOnline() {
 		return this.online;
@@ -56,25 +47,16 @@ public class User {
 	}
 	
 	public boolean checkPass(String param) {
-		if(param.equals(password)) return true;
-				return false;
+		return(param.equals(password));
 	}
 	
 	@Override
 	public boolean equals (Object user) {
 		User realuser= (User) user;
 		System.out.println("confronto "+this.Username+" con "+realuser.getUsername());
-		if (this.Username.equals(realuser.getUsername())) {
-			
-			return true;
-		}
-		return false;
+		return (this.Username.equals(realuser.getUsername()));
 	}
-	
-	public void setLanguage(String lingua) {
-		this.lingua=lingua;
-	}
-	
+
 	public boolean addFriend(User a) {
 		System.out.println(a.getUsername()+" e "+this.getUsername());
 		if (amici.contains(a)) {
@@ -91,7 +73,7 @@ public class User {
 	}
 
 	public ArrayList<String> getFriendList(){
-	    ArrayList<String> friendNameList = new ArrayList<String>();
+	    ArrayList<String> friendNameList = new ArrayList<>();
 	    Iterator <User> i = amici.iterator();
 	    while(i.hasNext()){
 	        User aux = i.next();

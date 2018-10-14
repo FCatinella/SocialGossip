@@ -9,9 +9,9 @@ import javax.swing.JTextArea;
 public class RemoteNoti extends RemoteObject implements RemoteNotiInterf{
 
     //variabili globali
-	private JTextArea notiList = null;
-	private DefaultListModel friendModel = null;
-	private String name= null;
+	private JTextArea notiList;
+	private DefaultListModel friendModel;
+	private String name;
 
 	public RemoteNoti(JTextArea notiList,DefaultListModel friendModel,String name) throws RemoteException{
 		super();

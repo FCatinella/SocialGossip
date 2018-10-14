@@ -11,34 +11,34 @@ import javax.swing.*;
 public class ClientMain extends JFrame implements ActionListener{
 	
 	private Socket socket;
-	
-	
+
 	//variabili
 	private InetAddress local=null;
 	private BufferedWriter writer = null;
 	private BufferedReader reader = null;
 	private String rec = null;
 	private JSONObject recJSON=null;
-	private JFrame finestra = null;
+	private JFrame finestra;
 	private String lang= "it";
 	
 	//componenti dell'interfaccia
 	private JLabel usernameLabel;
 	private JTextField usernameArea;
 	private JPasswordField passArea;
+
 	//lingue disponibili
 	private String[] langStrings = { "Italiano", "Francaise", "English", "Espanol", "Deutsch"};
 	private JComboBox langList = new JComboBox(langStrings);
 	
 	private ClientMain()  {
 		//Interfaccia grafica
-		
+		Dimension sizefinestra = Toolkit.getDefaultToolkit().getScreenSize();
 		//creo la finestra
 		int windwX=350;
 		int windwY=500;
 		finestra = new JFrame ("Benvenuto su Social Gossip");
 		finestra.setSize(windwX,windwY);
-		finestra.setLocation(100, 100);
+		finestra.setLocation(sizefinestra.width/2-175, 100);
 		finestra.setLayout(null);
 		
 		//titolo
@@ -96,11 +96,31 @@ public class ClientMain extends JFrame implements ActionListener{
 	
 	public static void main (String args[]){
 		ClientMain client = new ClientMain();
+		Dimension sizefinestra = Toolkit.getDefaultToolkit().getScreenSize();
 		//controllo che il server sia raggiungibile
 		if(!client.connectToServer()) {
+			//se il server non è raggiungibile visualizzo un messaggio di errore
 			System.out.println("Server non raggiungibile");
-			//termino se non lo è
-			System.exit(ABORT);
+			JFrame avviso = new JFrame("Errore");
+			avviso.setSize(300, 150);
+			//centro il messaggio
+			avviso.setLocation((sizefinestra.width / 2) - 150, 200);
+			JLabel jl=new JLabel("Server non raggiungibile");
+			jl.setHorizontalAlignment(JLabel.CENTER);
+			avviso.add(jl);
+			avviso.setResizable(false);
+			avviso.setAlwaysOnTop(true);
+			avviso.addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent e) {
+					//quando viene chiusa la finestra dell'avviso termina il thread
+					super.windowClosing(e);
+					System.exit(ABORT);
+				}
+			});
+			//disabilito la finestra principale e mostra l'avviso
+			client.finestra.setEnabled(false);
+			avviso.show();
 		}
 		//aggiungo il listener del pulsante chiudi della finestra
 		client.finestra.addWindowListener(new WindowAdapter( ){
@@ -160,16 +180,8 @@ public class ClientMain extends JFrame implements ActionListener{
 				break;
 			case "Login":
 				mess.put("OP","CONNECT");
-				try{
-					String ipAddr= InetAddress.getLocalHost().getHostAddress();
-					mess.put("IP",ipAddr);
-				}
-				catch(Exception e){
-					e.printStackTrace();
-				}
 				break;
 		}
-		
 		//in ogni caso devo inserire questi dati
 		String userDigit=usernameArea.getText();
 		String passDigit=String.valueOf(passArea.getPassword());
@@ -204,7 +216,7 @@ public class ClientMain extends JFrame implements ActionListener{
 		if(!result) {
 			JFrame infoWind = new JFrame();
 			infoWind.setSize(220,150);
-			infoWind.setLocation(150, 150);
+			infoWind.setLocation(finestra.getX()+65, finestra.getY()+75);
 			infoWind.setLayout(null);
 			JLabel errorMessage = new JLabel (errorMess);
 			errorMessage.setBounds(20, 40, 180, 30);
@@ -220,7 +232,7 @@ public class ClientMain extends JFrame implements ActionListener{
 					//visualizzo messaggio di avvenuta registrazione
 					JFrame infoWind = new JFrame();
 					infoWind.setSize(220,150);
-					infoWind.setLocation(150, 150);
+					infoWind.setLocation(finestra.getX()+65, finestra.getY()+75);
 					infoWind.setLayout(null);
 					JLabel errorMessage = new JLabel (errorMess);
 					errorMessage.setBounds(20, 40, 180, 30);
@@ -279,7 +291,6 @@ public class ClientMain extends JFrame implements ActionListener{
 			writer.newLine();
 			writer.flush();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		

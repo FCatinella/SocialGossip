@@ -1,3 +1,6 @@
+import javax.swing.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.*;
 import java.net.*;
 import java.rmi.registry.LocateRegistry;
@@ -6,16 +9,34 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.ConcurrentHashMap;
 
 
-public class ServerMain  {	
+public class ServerMain  {
 
-	public static void main(String[] args) throws IOException,BindException, InterruptedException {
+	public static void main(String[] args) throws IOException {
+
+	    //visualizzo una finestra che avvisa che il server è partito
+        JFrame isRunningFrame = new JFrame("Social Gossip - Server");
+        isRunningFrame.setResizable(false);
+        //quando chiuso la finestra interrompo il server
+        isRunningFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                super.windowClosing(e);
+                System.exit(0);
+            }
+        });
+        isRunningFrame.setSize(400,100);
+        JLabel jl = new JLabel("Server in esecuzione su: "+InetAddress.getLocalHost().getHostAddress());
+        jl.setHorizontalAlignment(0);
+        isRunningFrame.add(jl);
+        isRunningFrame.setAlwaysOnTop(true);
+        isRunningFrame.show();
 		System.out.println("Server Partito!");
-		//creo la tabella degli utenti registrati al servizio (concorrente)
-		ConcurrentHashMap<String,User> tabellaUtenti = new ConcurrentHashMap<String,User>();
-		ConcurrentHashMap<String,UserGroup> tabellaGruppi = new ConcurrentHashMap<String, UserGroup>();
+
+		//creo la tabella degli utenti e dei gruppi registrati al servizio (concorrente)
+		ConcurrentHashMap<String,User> tabellaUtenti = new ConcurrentHashMap<>();
+		ConcurrentHashMap<String,UserGroup> tabellaGruppi = new ConcurrentHashMap<>();
 		//creo l'oggeto remoto in cui saranno registrate le callback dei client
 		RMIServerImp RmiServer= new RMIServerImp(tabellaUtenti);
-
 
 		//RMI-----
 		try {
@@ -29,7 +50,7 @@ public class ServerMain  {
 			registry.bind(name, stub);
 		}
 		catch(Exception e) {
-			System.out.println("Eccezione RMI sever");
+			System.out.println("Eccezione RMI server");
 		}
 		//------
 
@@ -37,22 +58,21 @@ public class ServerMain  {
         ServerListenerTask listener = new ServerListenerTask(tabellaUtenti,RmiServer,tabellaGruppi);
 		System.out.println(InetAddress.getLocalHost().getHostAddress());
 		//creo il socket di welcome sulla porta 1994
-		ServerSocket serverSocket = new ServerSocket (1994);
-		Boolean stop = false;
+        ServerSocket serverSocket=null;
+        try{
+            serverSocket = new ServerSocket (1994);
+        }
+        catch (BindException e){
+            System.exit(1);
+        }
 		Thread th = new Thread(listener);
 		th.start();
-        while(!stop) {
+        while(true) {
 			//accetto le connessioni sulla porta di welcome (bloccante)
             Socket sock = serverSocket.accept();
 			//creo il task da eseguire
             listener.addSocket(sock);
             //lo passo al threadpool
 		}
-		//chiudo il socket e termino il server
-		serverSocket.close();
-		System.out.println("FINE");
-
 	}
-
-
 }

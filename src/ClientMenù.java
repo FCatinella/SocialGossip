@@ -10,6 +10,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientMenù implements ActionListener {
     //elementi interfaccia
@@ -20,13 +21,11 @@ public class ClientMenù implements ActionListener {
     private DefaultListModel friendModel = null;
     private DefaultListModel groupModel;
     private JTextArea addArea = null;
-    private HashMap<String,ClientChat> chatAperte;
-    private HashMap<String,ClientChat> chatGruppiAperte;
 
-
+    //variabili globali
+    private ConcurrentHashMap<String,ClientChat> chatAperte; //hashMap chat normali aperte
+    private ConcurrentHashMap<String,ClientChat> chatGruppiAperte; //hashMap chat di gruppo aperte
     private String username;
-
-    private Socket sock;
 
     //variabili per RMI
     private ServerInterface server =null;
@@ -35,14 +34,12 @@ public class ClientMenù implements ActionListener {
 
     public ClientMenù(String username, Socket sock){
         this.username=username;
-        this.chatAperte= new HashMap<>();
-        this.chatGruppiAperte = new HashMap<>();
+        this.chatAperte= new ConcurrentHashMap<>();
+        this.chatGruppiAperte = new ConcurrentHashMap<>();
         createWind();
-        this.sock=sock;
         try {
-            writer = new BufferedWriter(new OutputStreamWriter(this.sock.getOutputStream()));
+            writer = new BufferedWriter(new OutputStreamWriter(sock.getOutputStream()));
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
 
@@ -77,6 +74,7 @@ public class ClientMenù implements ActionListener {
         mess.put("USERNAME",username);
         //invio il messaggio e aspetto la risposta
         sendToServer(mess);
+        //ora richiedo la lista dei gruppi
         mess.put("OP","LISTGROUPS");
         sendToServer(mess);
     }
@@ -99,11 +97,12 @@ public class ClientMenù implements ActionListener {
                 super.windowClosing(e);
                 //Richiede la disconnessione dal server e chiude
                 try {
+                    //deregistro la il client per le callback
                     server.unregisterForCallback(stub);
                 } catch (RemoteException e1) {
-                    // TODO Auto-generated catch block
                     e1.printStackTrace();
                 }
+                //mi disconnetto dal server
                 disconnectFromServer();
                 System.exit(0);
             }
@@ -122,6 +121,7 @@ public class ClientMenù implements ActionListener {
         finestra.add(friendTitolo);
         friendModel= new DefaultListModel();
         JList friendList = new JList(friendModel);
+
         //mouse listener per la Jlist
         MouseListener mouseListenerAmici = new MouseAdapter() {
             @Override
@@ -134,10 +134,12 @@ public class ClientMenù implements ActionListener {
                     System.out.println("combo: "+username+amico);
                     //l'intero in fondo indica la modalità della finestra ( 0 = Chat con Amico , 1 = chat con Gruppo )
                     ClientChat aux = new ClientChat(username,amico,writer,0,chatAperte);
-                    double offset = 10*Math.random();
+                    //faccio apparire le finestre di chat in posizioni diverse per non farle sovrapporre
+                    double offset = 500*Math.random();
                     int intOff = (int) offset;
-                    aux.setPosition(intOff%100,finestra.getY());
+                    aux.setPosition(intOff%800,finestra.getY());
                     if(chatAperte.containsKey(username+amico)){
+                        //se c'è già una chat aperta la chiudo e ne apro una nuova
                         chatAperte.get(username+amico).close();
                         chatAperte.remove(username+amico);
                     }
@@ -164,14 +166,17 @@ public class ClientMenù implements ActionListener {
             @Override
             public void mouseClicked(MouseEvent e) {
                 super.mouseClicked(e);
+                //quando clicco due volte su un nome devo aprire una nuova finestra
                 if(e.getClickCount()==2 && groupList.getSelectedValue()!=null){
                     String gruppo = (String) groupList.getSelectedValue();
-                    //devo far partire la finestra della chat
+                    //devo far partire la finestra della chat gruop (mode=1)
                     ClientChat aux = new ClientChat(username,gruppo,writer,1,chatAperte);
+                    //faccio apparire le finestre di chat in posizioni diverse per non farle sovrapporre
                     double offset = 500*Math.random();
                     int intOff = (int) offset;
-                    aux.setPosition(intOff%1000,finestra.getY());
+                    aux.setPosition(intOff%800,finestra.getY());
                     if(chatGruppiAperte.containsKey(gruppo)){
+                        //se c'è già una chat aperta la chiudo e ne apro una nuova
                         chatGruppiAperte.get(gruppo).close();
                         chatGruppiAperte.remove(gruppo);
                     }
@@ -180,6 +185,7 @@ public class ClientMenù implements ActionListener {
             }
         };
         groupList.addMouseListener(mouseListenerGruppi);
+        //posso selezionare solo un gruppo alla volta
         groupList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         groupList.setLayoutOrientation(JList.VERTICAL_WRAP);
         JScrollPane groupScrollPane= new JScrollPane(groupList);
@@ -189,7 +195,7 @@ public class ClientMenù implements ActionListener {
         //pulsante crea gruppo
         JButton addGroup = new JButton("+");
         addGroup.setBounds(450,25,50,20);
-        addGroup.setFont(new Font("Arial",10,10));
+        addGroup.setFont(new Font("Arial",Font.PLAIN,10));
         addGroup.addActionListener(this);
         finestra.add(addGroup);
 
@@ -226,14 +232,13 @@ public class ClientMenù implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         String pressed = e.getActionCommand();
-        System.out.println(pressed);
         switch(pressed) {
             case "Esci":
                 //Richiede la disconnessione dal server e chiude
                 try {
+                    //mi deregistro dalle callback
                     server.unregisterForCallback(stub);
                 } catch (RemoteException e1) {
-                    // TODO Auto-generated catch block
                     e1.printStackTrace();
                 }
                 disconnectFromServer();
@@ -276,9 +281,7 @@ public class ClientMenù implements ActionListener {
                 mess.put("FRIEND", friendToAdd);
                 //invio richiesta
                 sendToServer(mess);
-                //aspetto la richiesta e se è andata a buon fine visualizzo l'amico nuovo nella lista degli amici
-                System.out.println(mess);
-            }
+                }
                 break;
 
             case "Aggiungiti ad un gruppo": {
@@ -289,8 +292,6 @@ public class ClientMenù implements ActionListener {
                 mess.put("GROUP", groupToAdd);
                 //invio richiesta
                 sendToServer(mess);
-                //aspetto la richiesta e se è andata a buon fine visualizzo l'amico nuovo nella lista degli amici
-                System.out.println(mess);
                 break;
             }
             case "+":{
@@ -326,6 +327,7 @@ public class ClientMenù implements ActionListener {
 
     }
 
+    //invia il messaggio al server
     private void sendToServer(JSONObject mess) {
         try {
             writer.write(mess.toJSONString());
@@ -338,6 +340,7 @@ public class ClientMenù implements ActionListener {
         }
     }
 
+    //invia messaggio di disconnessione al server
     private void disconnectFromServer() {
         JSONObject mess = new JSONObject();
         mess.put("OP","DISCONNECT");
@@ -354,6 +357,7 @@ public class ClientMenù implements ActionListener {
 
     }
 
+    //funzioni per modificare : lista amici e lista gruppi dell'interfaccia utente
     public void addFriendList(String friend){
         friendModel.addElement(friend);
     }
@@ -365,8 +369,9 @@ public class ClientMenù implements ActionListener {
     }
 
 
+    //invia il messaggio all'Ui di una chat
     public void sendToChatUI(String sender,String receiver, String message,int mode){
-        //vediamo come farlo
+        //prendo le due combinazioni possibili di chiave che identificano la chat
         String ver1 = sender+receiver;
         String ver2 = receiver+sender;
         if(mode==0){
@@ -380,11 +385,13 @@ public class ClientMenù implements ActionListener {
             }
             else{
                 //non c'è nessuna chat aperta
+                //ne apro una nuova e la aggiungo a quelle aperte
                 ClientChat aux = new ClientChat(receiver,sender,writer,0,chatAperte);
                 double offset = 10*Math.random();
                 int intOff = (int) offset;
                 aux.setPosition(intOff%100,finestra.getY());
                 chatAperte.put(receiver+sender,aux);
+                //scrivo il messaggio nel box della chat
                 aux.chatArea.append(sender+":"+message+"\n");
             }
         }

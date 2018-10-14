@@ -1,5 +1,10 @@
 import java.net.Socket;
 
+/*
+	Task che spawna i due principali componenti del client:
+	- L'interfaccia utente
+	- Il listener che riceve i messaggi
+ */
 public class Client implements Runnable{
 
     //variabili globali
